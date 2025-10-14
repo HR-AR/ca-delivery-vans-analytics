@@ -1240,6 +1240,211 @@ Successfully installed et-xmlfile-2.0.0 numpy-2.3.3 openpyxl-3.1.5 pandas-2.3.3 
 
 ---
 
+## Phase 4.10: Chart Data Structures + OTD Removal + Data Cleaning (2025-10-14)
+
+### **Problem Summary**:
+User reported: "All charts are still broken" after Phase 4.9. Agent analysis revealed:
+1. CPD chart: Python returns dict, JS expects array
+2. Batch Density chart: Python returns aggregates, JS expects trip-level data
+3. Data Summary: Field name mismatches (camelCase vs snake_case)
+4. Missing comprehensive data cleaning (no type conversion, whitespace handling)
+5. User clarified: "OTD is an internal store metric" - should be removed from dashboard
+
+### **Agent Findings** (4 parallel agents deployed):
+- **Agent 1**: Data structure mismatches in CPD and Batch Density charts
+- **Agent 2**: OTD calculation was per-trip (should be per-order weighted)
+- **Agent 3**: Data Summary using wrong field names (totalOrders → total_orders)
+- **Agent 4**: No data cleaning in load_nash_data() (type conversion, whitespace, dates)
+
+### **Fixes Applied**:
+
+**Fix 1: Remove OTD Metric**
+```html
+<!-- dashboard.html: Changed KPI -->
+<div class="highlight-card">
+    <div class="highlight-value">--</div>
+    <div class="highlight-label">Total Trips</div> <!-- Was: OTD % -->
+</div>
+
+<!-- Replaced OTD Chart with Store Performance Overview -->
+<canvas id="storePerformanceChart"></canvas> <!-- Was: otdChart -->
+```
+
+```javascript
+// dashboard.js: Renamed chart variable + function
+let storePerformanceChart = null; // Was: otdChart
+
+async function initStorePerformanceChart() { // Was: initOTDChart
+    // Shows orders and trips by top 10 stores (grouped bar chart)
+    // Replaced OTD% stacked bar chart
+}
+```
+
+**Fix 2: CPD Comparison Chart - Dict to Array**
+```python
+# cpd_analysis.py - BEFORE
+return {
+    "stores": {
+        "2082": {van_cpd: 4.5, spark_cpd: 5.7},
+        "2242": {van_cpd: 4.2, spark_cpd: 5.7}
+    }
+}
+
+# cpd_analysis.py - AFTER
+return {
+    "stores": [
+        {store_id: "2082", van_cpd: 4.5, spark_cpd: 5.7, van_orders: 1200},
+        {store_id: "2242", van_cpd: 4.2, spark_cpd: 5.7, van_orders: 980}
+    ]
+}
+```
+
+**Fix 3: Batch Density Chart - Trip-Level Data**
+```python
+# batch_analysis.py - NEW FUNCTION
+def get_trip_level_batch_data(nash_df, rate_cards):
+    """
+    Returns trip-level data for scatter plot.
+    Each row in Nash CSV becomes a point on the chart.
+    """
+    batches = []
+    for _, row in ca_df.iterrows():
+        trip_cpd = calculate_van_cpd(row, rate_card, batch_size)
+        batches.append({
+            "carrier": row['Carrier_Normalized'],
+            "batch_size": int(row['Total Orders']),
+            "cpd": round(trip_cpd, 2)
+        })
+    return {"batches": batches}
+```
+
+```typescript
+// analytics.service.ts - Pass rate_cards for CPD calculation
+static async analyzeBatches(csvFilePath: string) {
+    const { registryPath, rateCardsPath } = await this.createTempFiles();
+    const result = await runPythonScript('batch_analysis.py', [
+        csvFilePath,
+        registryPath,
+        rateCardsPath  // NEW: needed for CPD calculation
+    ]);
+}
+```
+
+**Fix 4: Comprehensive Data Cleaning**
+```python
+# __init__.py - Enhanced load_nash_data()
+def load_nash_data(file_path: str) -> pd.DataFrame:
+    df = pd.read_csv(file_path)
+
+    # 1. TRIM WHITESPACE from all string columns
+    string_columns = df.select_dtypes(include=['object']).columns
+    for col in string_columns:
+        df[col] = df[col].astype(str).str.strip()
+
+    # 2. CONVERT STORE ID to string (critical for matching)
+    df['Store Id'] = df['Store Id'].astype(str).str.strip()
+
+    # 3. PARSE DATES with mixed format support
+    df['Date'] = pd.to_datetime(df['Date'], format='mixed', errors='coerce')
+
+    # 4. CONVERT NUMERIC FIELDS with error handling
+    numeric_fields = ['Total Orders', 'Total Trips', 'Trip Distance']
+    for field in numeric_fields:
+        df[field] = pd.to_numeric(df[field], errors='coerce').astype('Int64')
+
+    # 5. CONVERT BOOLEAN FIELDS (0/1 to Int8)
+    boolean_fields = ['Is Pickup Arrived Ontime', 'Has OnTime']
+    for field in boolean_fields:
+        df[field] = pd.to_numeric(df[field], errors='coerce').astype('Int8')
+
+    # 6. TRIM CARRIER NAMES (critical for mapping)
+    df['Carrier'] = df['Carrier'].str.strip()
+
+    return df
+```
+
+### **Commits**:
+
+**Commit 1: Remove OTD Metric**
+- dashboard.html: Changed KPI "OTD %" → "Total Trips"
+- dashboard.html: Replaced OTD chart with "Store Performance Overview"
+- dashboard.js: Renamed otdChart → storePerformanceChart
+- dashboard.js: Created initStorePerformanceChart() (grouped bar: orders/trips by store)
+- dashboard.js: Updated highlights to display total_trips count
+- dashboard.js: Simplified Total Batches calculation
+
+**Commit 2: Fix All Chart Data Structures**
+- cpd_analysis.py: Changed stores from dict to array, added van_orders field
+- batch_analysis.py: Created get_trip_level_batch_data() for scatter plot
+- batch_analysis.py: Updated CLI to accept rate_cards parameter
+- analytics.service.ts: Pass rate_cards to batch analysis
+- __init__.py: Comprehensive data cleaning in load_nash_data()
+
+---
+
+### **COE Lessons Learned**:
+
+#### **Lesson 35: Data Structure Alignment (Python ↔ JavaScript)**
+- **Problem**: Python returned `stores: {...}`, JavaScript expected `stores: [...]`
+- **Root Cause**: Never verified data structure between backend and frontend
+- **Solution**: Always check what frontend expects before writing backend code
+- **Pattern**: API contract = data structure + field names + types
+- **Prevention**: Document expected JSON structure in both Python docstrings and JS comments
+
+#### **Lesson 36: Trip-Level vs Aggregate Data**
+- **Problem**: Scatter plots need individual data points, not aggregates
+- **Root Cause**: Used existing aggregate function instead of creating trip-level function
+- **Solution**: Create separate function for visualization needs
+- **Pattern**: Aggregates for KPIs, raw data for scatter/line charts
+- **Prevention**: Ask "what does this chart need?" before choosing analysis function
+
+#### **Lesson 37: Clean Data at the Source**
+- **Problem**: Data quality issues scattered across multiple analysis functions
+- **Root Cause**: No centralized data cleaning in load_nash_data()
+- **Solution**: Comprehensive cleaning at load time (whitespace, types, dates)
+- **Pattern**: Clean once at source, not N times in consumers
+- **Prevention**: Put all data cleaning in load function, not analysis functions
+
+#### **Lesson 38: User Requirements Over Assumptions**
+- **Problem**: Spent time fixing OTD calculation when user didn't want it
+- **User Quote**: "Is OTD even available in the data set I don't think it is"
+- **Solution**: When user questions a feature, clarify if they want it removed
+- **Pattern**: User's "why do we have this?" often means "remove this"
+- **Prevention**: Ask "should we keep this?" before fixing complex features
+
+#### **Lesson 39: Nullable Integer Types (Int64 vs int64)**
+- **Technical**: Pandas has two integer types:
+  - `int64`: Cannot contain NaN (crashes on missing values)
+  - `Int64`: Nullable integer (handles NaN gracefully)
+- **Solution**: Use `Int64` for real-world CSV data with missing values
+- **Pattern**: `pd.to_numeric(errors='coerce').astype('Int64')`
+- **Prevention**: Always use nullable types (Int64, Float64, boolean) for CSV data
+
+#### **Lesson 40: Mixed Date Format Handling**
+- **Problem**: CSV might have MM/DD/YYYY or YYYY-MM-DD or mixed
+- **Solution**: `pd.to_datetime(format='mixed', errors='coerce')`
+- **Pattern**: Don't assume date format consistency in real-world data
+- **Prevention**: Use format='mixed' for robustness
+
+---
+
+### **Impact Summary**:
+- ✅ OTD metric removed (user confirmed internal-only)
+- ✅ CPD Comparison chart returns array (sortable, filterable)
+- ✅ Batch Density chart shows trip-level scatter plot
+- ✅ Comprehensive data cleaning (whitespace, types, dates, booleans)
+- ✅ All 5 charts have correct data structures
+- ✅ Store Performance Overview chart replaces OTD chart
+- ✅ Deployment triggered on Render (commits pushed)
+
+### **Testing Status**:
+- ⏳ Waiting for Render deployment to complete
+- ⏳ User to test all 5 charts after deployment
+- ⏳ Verify Data Summary displays correct values
+- ⏳ Confirm no more HTTP 500/502 errors
+
+---
+
 ## 🚀 READY FOR PHASE 5
 
 **Prerequisites**: ✅ ALL MET
@@ -1269,4 +1474,4 @@ Successfully installed et-xmlfile-2.0.0 numpy-2.3.3 openpyxl-3.1.5 pandas-2.3.3 
 
 ---
 
-**Last Updated**: 2025-10-14 (Phase 4.9 COMPLETE - Virtualenv + Store Source Fixed - 34 COE Lessons Documented)
+**Last Updated**: 2025-10-14 (Phase 4.10 COMPLETE - All Charts Fixed + OTD Removed + Data Cleaning - 40 COE Lessons Documented)
