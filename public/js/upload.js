@@ -233,10 +233,10 @@ function showSuccess(data) {
                     • Carriers: <strong>${carriers.join(', ') || 'N/A'}</strong>
                 </div>
                 ${warnings.length > 0 ? `
-                <div class="alert alert-warning" style="margin-top: 1rem; padding: 0.75rem;">
-                    <strong>Warnings:</strong>
-                    <ul style="margin: 0.5rem 0 0 1.5rem;">
-                        ${warnings.map(w => `<li>${w}</li>`).join('')}
+                <div class="alert alert-warning" style="margin-top: 1rem; padding: 1rem; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 4px;">
+                    <strong style="color: #856404; font-size: 1.1em;">⚠️ Warnings:</strong>
+                    <ul style="margin: 0.75rem 0 0 1.5rem; color: #856404; line-height: 1.6;">
+                        ${warnings.map(w => `<li style="margin-bottom: 0.5rem;"><strong>${w}</strong></li>`).join('')}
                     </ul>
                 </div>
                 ` : ''}
