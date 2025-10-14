@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install && python3 -m pip install -r requirements.txt && npm run build
+    buildCommand: npm install --include=dev && python3 -m pip install -r requirements.txt && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
