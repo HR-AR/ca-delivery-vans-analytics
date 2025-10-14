@@ -116,7 +116,7 @@ function validateAndDisplayFile(file) {
 /**
  * Clear file selection
  */
-function clearFileSelection(event) {
+function clearFileSelection(event, keepResults = false) {
     if (event) {
         event.stopPropagation();
     }
@@ -125,7 +125,11 @@ function clearFileSelection(event) {
     fileInput.value = '';
     uploadZone.style.display = 'block';
     fileSelectedContainer.classList.add('hidden');
-    resultsContainer.innerHTML = '';
+
+    // Only clear results if explicitly requested
+    if (!keepResults) {
+        resultsContainer.innerHTML = '';
+    }
 }
 
 /**
@@ -175,9 +179,9 @@ async function uploadFile() {
             progressText.textContent = 'Complete!';
             showSuccess(result);
 
-            // Clear file selection after successful upload
+            // Clear file selection after successful upload but KEEP the results visible
             setTimeout(() => {
-                clearFileSelection();
+                clearFileSelection(null, true); // keepResults = true
                 progressContainer.classList.add('hidden');
                 progressFill.style.width = '0%';
             }, 2000);
