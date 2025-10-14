@@ -9,7 +9,7 @@
 
 let totalOrdersChart = null;
 let cpdChart = null;
-let otdChart = null;
+let storePerformanceChart = null;
 let vendorChart = null;
 let batchDensityChart = null;
 
@@ -373,61 +373,66 @@ async function initCPDChart() {
 }
 
 // ==========================================
-// Chart 3: OTD % by Carrier (Stacked Bar Chart)
+// Chart 3: Store Performance Overview (Bar Chart)
 // ==========================================
 
 /**
- * Initialize OTD % by Carrier chart
+ * Initialize Store Performance Overview chart
+ * Shows orders and trips by store
  */
-async function initOTDChart() {
-    const chartId = 'OTD';
-    const canvasId = 'otdChart';
+async function initStorePerformanceChart() {
+    const chartId = 'StorePerformance';
+    const canvasId = 'storePerformanceChart';
 
     try {
         showChartLoading(chartId);
 
-        const response = await fetchVendorsData();
+        const response = await fetchStoresData();
 
-        // Python returns raw JSON: { FOX: {...}, NTG: {...}, FDC: {...} }
-        if (!response || Object.keys(response).length === 0) {
-            showChartError(chartId, 'No vendor data available.');
+        // Ensure we have an array
+        const storesArray = Array.isArray(response.stores) ? response.stores : [];
+
+        if (storesArray.length === 0) {
+            showChartError(chartId, 'No store data available.');
             return;
         }
 
-        // Convert object to array
-        const vendors = Object.keys(response).map(carrier => ({
-            carrier: carrier,
-            otd_percentage: response[carrier].otd_percentage || 0
-        }));
+        // Sort by total orders and take top 10
+        const topStores = storesArray
+            .filter(store => store.total_orders > 0)
+            .sort((a, b) => (b.total_orders || 0) - (a.total_orders || 0))
+            .slice(0, 10);
 
-        const labels = vendors.map(v => v.carrier);
-        const ontimePercentages = vendors.map(v => v.otd_percentage || 0);
-        const latePercentages = vendors.map(v => 100 - (v.otd_percentage || 0));
+        const labels = topStores.map(store => `Store ${store.store_id}`);
+        const ordersData = topStores.map(store => store.total_orders || 0);
+        const tripsData = topStores.map(store => store.total_trips || 0);
 
         showChartCanvas(chartId);
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
 
-        if (otdChart) otdChart.destroy();
+        if (storePerformanceChart) storePerformanceChart.destroy();
 
-        otdChart = new Chart(ctx, {
+        storePerformanceChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'On-Time',
-                        data: ontimePercentages,
-                        backgroundColor: COLORS.green,
-                        borderColor: COLORS.green,
-                        borderWidth: 1
+                        label: 'Total Orders',
+                        data: ordersData,
+                        backgroundColor: COLORS.blue,
+                        borderColor: COLORS.blue,
+                        borderWidth: 1,
+                        yAxisID: 'y'
                     },
                     {
-                        label: 'Late',
-                        data: latePercentages,
-                        backgroundColor: COLORS.red,
-                        borderColor: COLORS.red,
-                        borderWidth: 1
+                        label: 'Total Trips',
+                        data: tripsData,
+                        backgroundColor: COLORS.green,
+                        borderColor: COLORS.green,
+                        borderWidth: 1,
+                        yAxisID: 'y'
                     }
                 ]
             },
@@ -441,33 +446,35 @@ async function initOTDChart() {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+                                return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}`;
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
-                        stacked: true,
                         title: {
                             display: true,
-                            text: 'Carrier'
+                            text: 'Store'
                         }
                     },
                     y: {
-                        stacked: true,
                         beginAtZero: true,
-                        max: 100,
                         title: {
                             display: true,
-                            text: 'Percentage (%)'
+                            text: 'Count'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString();
+                            }
                         }
                     }
                 }
             }
         });
     } catch (error) {
-        console.error('Error initializing OTD chart:', error);
+        console.error('Error initializing Store Performance chart:', error);
         showChartError(chartId, error.message || 'Failed to load chart data');
     }
 }
@@ -707,13 +714,10 @@ async function updateHighlights() {
             valueEl.style.color = cpdColor;
         }
 
-        // Update OTD % (snake_case)
+        // Update Total Trips (snake_case)
         if (highlights[2]) {
-            const otd = data.otd_percentage || 0;
-            const otdColor = otd >= 95 ? COLORS.green : otd >= 90 ? COLORS.yellow : COLORS.red;
-            const valueEl = highlights[2].querySelector('.highlight-value');
-            valueEl.textContent = `${otd.toFixed(1)}%`;
-            valueEl.style.color = otdColor;
+            highlights[2].querySelector('.highlight-value').textContent =
+                data.total_trips?.toLocaleString() || '--';
         }
 
         // Update Active Stores (active_stores from Python)
@@ -722,14 +726,10 @@ async function updateHighlights() {
                 data.active_stores?.toLocaleString() || '--';
         }
 
-        // Update Total Batches (calculate from stores data)
+        // Update Total Batches (use total_trips from dashboard data)
         if (highlights[4]) {
-            const storesResponse = await fetchStoresData();
-            const totalBatches = storesResponse && storesResponse.stores
-                ? storesResponse.stores.reduce((sum, store) => sum + (store.metrics?.total_batches || 0), 0)
-                : 0;
             highlights[4].querySelector('.highlight-value').textContent =
-                totalBatches.toLocaleString();
+                data.total_trips?.toLocaleString() || '--';
         }
 
         // Update data summary
@@ -748,27 +748,29 @@ function updateDataSummary(data) {
     const summaryEl = document.getElementById('dataSummary');
     if (!summaryEl) return;
 
-    const dateRange = data.dateRange || {};
-    const startDate = dateRange.start || 'N/A';
-    const endDate = dateRange.end || 'N/A';
+    // Python API returns snake_case fields: total_orders, active_stores
+    // Date range is not available in API, so we'll show "All Data"
+    const totalOrders = data.total_orders || 0;
+    const activeStores = data.active_stores || 0;
+    const totalTrips = data.total_trips || 0;
 
     summaryEl.innerHTML = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
             <div>
                 <div style="font-weight: 600; color: #374151; margin-bottom: 0.25rem;">Date Range</div>
-                <div style="color: #6b7280; font-size: 0.875rem;">${startDate} to ${endDate}</div>
+                <div style="color: #6b7280; font-size: 0.875rem;">All Data</div>
             </div>
             <div>
                 <div style="font-weight: 600; color: #374151; margin-bottom: 0.25rem;">Total Orders</div>
-                <div style="color: #6b7280; font-size: 0.875rem;">${(data.totalOrders || 0).toLocaleString()} orders</div>
+                <div style="color: #6b7280; font-size: 0.875rem;">${totalOrders.toLocaleString()} orders</div>
             </div>
             <div>
                 <div style="font-weight: 600; color: #374151; margin-bottom: 0.25rem;">Active CA Stores</div>
-                <div style="color: #6b7280; font-size: 0.875rem;">${data.caStoreCount || 0} stores</div>
+                <div style="color: #6b7280; font-size: 0.875rem;">${activeStores} stores</div>
             </div>
             <div>
-                <div style="font-weight: 600; color: #374151; margin-bottom: 0.25rem;">Last Updated</div>
-                <div style="color: #6b7280; font-size: 0.875rem;">${new Date().toLocaleString()}</div>
+                <div style="font-weight: 600; color: #374151; margin-bottom: 0.25rem;">Total Trips</div>
+                <div style="color: #6b7280; font-size: 0.875rem;">${totalTrips} trips</div>
             </div>
         </div>
     `;
@@ -809,7 +811,7 @@ async function initDashboard() {
         await Promise.all([
             initTotalOrdersChart(),
             initCPDChart(),
-            initOTDChart(),
+            initStorePerformanceChart(),
             initVendorChart(),
             initBatchDensityChart()
         ]);
@@ -829,7 +831,7 @@ async function refreshDashboard() {
     // Destroy existing charts
     if (totalOrdersChart) totalOrdersChart.destroy();
     if (cpdChart) cpdChart.destroy();
-    if (otdChart) otdChart.destroy();
+    if (storePerformanceChart) storePerformanceChart.destroy();
     if (vendorChart) vendorChart.destroy();
     if (batchDensityChart) batchDensityChart.destroy();
 
@@ -871,7 +873,7 @@ function initRefreshButton() {
 function handleResize() {
     if (totalOrdersChart) totalOrdersChart.resize();
     if (cpdChart) cpdChart.resize();
-    if (otdChart) otdChart.resize();
+    if (storePerformanceChart) storePerformanceChart.resize();
     if (vendorChart) vendorChart.resize();
     if (batchDensityChart) batchDensityChart.resize();
 }
@@ -898,7 +900,7 @@ if (typeof module !== 'undefined' && module.exports) {
         updateHighlights,
         initTotalOrdersChart,
         initCPDChart,
-        initOTDChart,
+        initStorePerformanceChart,
         initVendorChart,
         initBatchDensityChart
     };
