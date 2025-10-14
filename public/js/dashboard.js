@@ -805,16 +805,29 @@ async function initDashboard() {
 
     try {
         // Update KPIs first
+        console.log('Updating KPIs...');
         await updateHighlights();
+        console.log('KPIs updated successfully');
 
-        // Initialize all charts in parallel
-        await Promise.all([
+        // Initialize all charts in parallel with individual error handling
+        console.log('Initializing charts...');
+        const results = await Promise.allSettled([
             initTotalOrdersChart(),
             initCPDChart(),
             initStorePerformanceChart(),
             initVendorChart(),
             initBatchDensityChart()
         ]);
+
+        // Log which charts succeeded/failed
+        const chartNames = ['Total Orders', 'CPD', 'Store Performance', 'Vendor', 'Batch Density'];
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                console.log(`✓ ${chartNames[index]} chart initialized`);
+            } else {
+                console.error(`✗ ${chartNames[index]} chart failed:`, result.reason);
+            }
+        });
 
         console.log('Dashboard initialization complete');
     } catch (error) {
