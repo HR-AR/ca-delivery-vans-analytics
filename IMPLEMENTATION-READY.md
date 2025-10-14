@@ -1018,6 +1018,228 @@ Successfully installed pandas-2.x.x numpy-1.x.x openpyxl-3.x.x
 
 ---
 
+## 🔧 PHASE 4.9: VIRTUALENV FIX + STORE DATA SOURCE (COMPLETE)
+
+**Status**: ✅ Python packages installing + Dashboard showing all stores
+
+**Context**: Build failed with virtualenv error, then dashboard showed wrong store count (2 instead of 3).
+
+### **Issue 1: Virtualenv --user Flag Incompatibility**
+
+**Build Error**:
+```
+ERROR: Can not perform a '--user' install. User site-packages are not visible in this virtualenv.
+```
+
+**Root Cause**:
+- Render creates a virtualenv for Python in node environments
+- The `--user` flag tries to install to user site-packages
+- Virtualenv blocks user installs by design
+- Our previous fix (Phase 4.7) used `--user` flag incorrectly
+
+**Solution** ([render.yaml:7](render.yaml#L7), [python-bridge.ts:24-32](src/utils/python-bridge.ts#L24-L32)):
+
+```yaml
+# Before:
+buildCommand: npm install && python3 -m pip install --user -r requirements.txt && npm run build
+envVars:
+  - key: PYTHONUSERBASE
+    value: /opt/render/project/.python_packages
+
+# After:
+buildCommand: npm install --include=dev && python3 -m pip install -r requirements.txt && npm run build
+envVars:
+  # Removed PYTHONUSERBASE - not needed for virtualenv
+```
+
+```typescript
+// Before:
+const pythonUserBase = process.env.PYTHONUSERBASE || '/opt/render/project/.python_packages';
+PYTHONPATH: `${projectRoot}:${pythonUserBase}/lib/python3.13/site-packages`
+
+// After:
+PYTHONPATH: projectRoot  // Virtualenv handles package paths automatically
+```
+
+**Impact**:
+- ✅ Packages install to virtualenv successfully
+- ✅ Python finds packages automatically (no manual PYTHONPATH needed)
+- ✅ Simpler, more maintainable solution
+- ✅ Build logs show: `Successfully installed pandas-2.3.3 numpy-2.3.3 openpyxl-3.1.5`
+
+---
+
+### **Issue 2: TypeScript Missing Dev Dependencies**
+
+**Build Error**:
+```
+error TS7016: Could not find a declaration file for module 'multer'
+error TS7016: Could not find a declaration file for module 'express'
+```
+
+**Root Cause**:
+- Build command used `npm install` without `--include=dev`
+- TypeScript type definitions are in devDependencies
+- Production mode excludes @types/* packages
+
+**Solution** ([render.yaml:7](render.yaml#L7)):
+```bash
+npm install --include=dev  # Add --include=dev flag
+```
+
+**Impact**: TypeScript compilation succeeds with type definitions
+
+---
+
+### **Issue 3: Active Stores Count Wrong (2 instead of 3)**
+
+**User Report**: "shouldn't I have 3 active CA stores in data?"
+
+**Root Cause Found** ([ui-server.ts:333](src/ui-server.ts#L333)):
+```typescript
+// OLD - Wrong source:
+const storeRegistry = await loadStoreRegistry();
+const stores = Object.keys(storeRegistry.stores);  // Only 2 stores in registry!
+```
+
+The `/api/analytics/stores` endpoint was reading stores from the **registry** (persistent Spark CPD data) instead of the **uploaded Nash CSV**. User had only uploaded Spark CPD for 2 stores but had 3 stores in their Nash data.
+
+**Solution** ([ui-server.ts:331-356](src/ui-server.ts#L331-L356)):
+```typescript
+// NEW - Correct source:
+// Read Nash CSV to get unique Store IDs
+const csvContent = fs.readFileSync(latestFile, 'utf-8');
+const lines = csvContent.split('\n');
+const storeIdIndex = header.indexOf('Store Id');
+
+const storeIds = new Set<string>();
+for (let i = 1; i < lines.length; i++) {
+  const storeId = columns[storeIdIndex];
+  if (storeId) storeIds.add(storeId.trim());
+}
+
+// Analyze each store found in Nash data
+const results = await Promise.all(
+  Array.from(storeIds).map(storeId =>
+    AnalyticsService.analyzeStore(latestFile, storeId)
+  )
+);
+```
+
+**Impact**:
+- ✅ Dashboard shows ALL stores from Nash upload
+- ✅ Active Stores count now accurate (3, not 2)
+- ✅ Charts display data for all uploaded stores
+
+---
+
+### **Issue 4: Chart Error "response.stores.sort is not a function"**
+
+**Error**: User screenshot showed chart failing with `.sort()` error
+
+**Root Cause**:
+- JavaScript expected `response.stores` to be an array
+- Edge case: API could return non-array format
+- No type safety in frontend JavaScript
+
+**Solution** ([dashboard.js:177, 276](public/js/dashboard.js#L177)):
+```javascript
+// Added array safety wrapper
+const storesArray = Array.isArray(response.stores) ? response.stores : [];
+
+const sortedStores = storesArray
+  .filter(...)
+  .sort(...)
+  .slice(0, 10);
+```
+
+**Impact**: Charts handle unexpected data gracefully, no crashes
+
+---
+
+### **Fixes Applied** (4 Commits):
+
+**Commit 1: `746a37c` - Remove --user flag for virtualenv**
+- Removed `--user` from pip install
+- Removed PYTHONUSERBASE environment variable
+- Simplified python-bridge.ts PYTHONPATH logic
+
+**Commit 2: `7feeb68` - Add --include=dev for TypeScript types**
+- Changed `npm install` → `npm install --include=dev`
+- Allows TypeScript to find @types/* packages
+
+**Commit 3: `1a1bc6b` - Fix store data source + array safety**
+- Changed store source from registry → Nash CSV
+- Added array safety checks in dashboard.js
+- Fixes active store count and chart errors
+
+**Commit 4: Render Dashboard Update (Manual)**
+- Updated build command to match render.yaml
+
+---
+
+### **COE Lessons Learned**:
+
+#### **Lesson 30: Virtualenv vs User Site-Packages**
+- **Problem**: `--user` flag incompatible with virtualenv environments
+- **Root Cause**: Virtualenv isolates packages; user site-packages not visible
+- **Solution**: Install directly to virtualenv (no --user flag needed)
+- **Pattern**: Platform creates venv → use it, don't fight it
+- **Prevention**: Test pip install in target environment first
+
+#### **Lesson 31: Build Command Iterations Are Normal**
+- **Journey**:
+  - Attempt 1: System pip install (failed - no pandas)
+  - Attempt 2: `pip install --user` (failed - virtualenv blocked)
+  - Attempt 3: `pip install` to virtualenv (SUCCESS!)
+- **Lesson**: Each platform has unique constraints; iterate until it works
+- **Pattern**: Build → Deploy → Read logs → Adjust → Repeat
+- **Prevention**: Accept iteration as part of deployment process
+
+#### **Lesson 32: Data Source Matters - Registry vs Upload**
+- **Problem**: Used wrong data source (registry instead of Nash upload)
+- **User Impact**: Dashboard showed 2 stores when user uploaded 3
+- **Root Cause**: Confused persistent data (registry) with transient data (upload)
+- **Solution**: Always read from the source the user cares about (uploaded CSV)
+- **Pattern**: Persistent storage ≠ Current analysis data
+- **Prevention**: Ask "what does the user expect to see?" when choosing data source
+
+#### **Lesson 33: Array Safety in Dynamically-Typed Languages**
+- **Problem**: Assumed `response.stores` would always be an array
+- **Reality**: APIs can return unexpected formats, causing crashes
+- **Solution**: `Array.isArray(x) ? x : []` before array methods
+- **Pattern**: Defensive programming in JavaScript (no TypeScript safety)
+- **Prevention**: Always validate data types in untyped code
+
+#### **Lesson 34: The Simplicity Principle**
+- **Before**: Custom PYTHONPATH with python3.11, 3.12, 3.13, PYTHONUSERBASE
+- **After**: Just `PYTHONPATH: projectRoot` - virtualenv handles the rest
+- **Lesson**: Platform defaults often work better than custom solutions
+- **Pattern**: Start simple, only add complexity if needed
+- **Prevention**: Trust platform conventions before customizing
+
+---
+
+### **Impact Summary**:
+- ✅ Python packages installing successfully to virtualenv
+- ✅ Dashboard shows all 3 stores from Nash upload
+- ✅ Active Stores count accurate
+- ✅ Charts render without errors
+- ✅ Build command correct (--include=dev + pip install)
+- ✅ Simpler Python path configuration
+
+### **Build Log Verification** (Successful):
+```
+==> Running build command 'npm install --include=dev && python3 -m pip install -r requirements.txt && npm run build'
+Collecting pandas>=2.0.0
+Collecting numpy>=1.24.0
+Collecting openpyxl>=3.1.0
+Successfully installed et-xmlfile-2.0.0 numpy-2.3.3 openpyxl-3.1.5 pandas-2.3.3 python-dateutil-2.9.0.post0 pytz-2025.2 six-1.17.0 tzdata-2025.2
+==> Build successful 🎉
+```
+
+---
+
 ## 🚀 READY FOR PHASE 5
 
 **Prerequisites**: ✅ ALL MET
@@ -1047,4 +1269,4 @@ Successfully installed pandas-2.x.x numpy-1.x.x openpyxl-3.x.x
 
 ---
 
-**Last Updated**: 2025-10-14 (Phase 4.8 COMPLETE - Carrier Mapping + Build Command Fixed - Ready for Deploy Verification)
+**Last Updated**: 2025-10-14 (Phase 4.9 COMPLETE - Virtualenv + Store Source Fixed - 34 COE Lessons Documented)
