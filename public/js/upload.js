@@ -213,9 +213,13 @@ async function uploadFile() {
  * Show success message with upload stats
  */
 function showSuccess(data) {
-    const summary = data.summary || {};
-    const stores = summary.stores || [];
-    const carriers = summary.carriers || [];
+    // Backend sends validationResult, not summary
+    const validation = data.validationResult || {};
+    const totalRows = validation.totalRows || 0;
+    const caStores = validation.caStores || 0;
+    const nonCARows = validation.nonCAStoresExcluded || 0;
+    const carriers = validation.carriers || [];
+    const warnings = validation.warnings || [];
 
     const html = `
         <div class="alert alert-success">
@@ -223,12 +227,19 @@ function showSuccess(data) {
             <div class="alert-content">
                 <strong>File processed successfully!</strong>
                 <div class="alert-list" style="margin-top: 0.75rem;">
-                    • Total rows processed: <strong>${summary.totalRows || 0}</strong><br>
-                    • CA stores: <strong>${stores.length}</strong> (${stores.join(', ')})<br>
-                    ${summary.nonCARows ? `• Non-CA rows excluded: <strong>${summary.nonCARows}</strong><br>` : ''}
-                    ${summary.dateRange ? `• Date range: <strong>${summary.dateRange.start}</strong> to <strong>${summary.dateRange.end}</strong><br>` : ''}
+                    • Total rows processed: <strong>${totalRows}</strong><br>
+                    • CA stores found: <strong>${caStores}</strong><br>
+                    ${nonCARows > 0 ? `• Non-CA rows excluded: <strong>${nonCARows}</strong><br>` : ''}
                     • Carriers: <strong>${carriers.join(', ') || 'N/A'}</strong>
                 </div>
+                ${warnings.length > 0 ? `
+                <div class="alert alert-warning" style="margin-top: 1rem; padding: 0.75rem;">
+                    <strong>Warnings:</strong>
+                    <ul style="margin: 0.5rem 0 0 1.5rem;">
+                        ${warnings.map(w => `<li>${w}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
             </div>
         </div>
         <div class="card">

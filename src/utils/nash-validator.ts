@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 
 interface ValidationResult {
   valid: boolean;
@@ -23,7 +24,31 @@ const REQUIRED_COLUMNS = [
 
 const KNOWN_CARRIERS = ['FOX', 'NTG', 'FDC'];
 
-const CA_STORES = [2082, 2242, 5930]; // CA stores for validation
+// Load CA stores from CSV file (273 stores)
+let CA_STORES: number[] = [];
+function loadCAStores(): number[] {
+  if (CA_STORES.length > 0) return CA_STORES;
+
+  try {
+    const caStoresPath = path.join(__dirname, '../../States/walmart_stores_ca_only.csv');
+    const content = fs.readFileSync(caStoresPath, 'utf-8');
+    const lines = content.split('\n').slice(1); // Skip header
+    CA_STORES = lines
+      .filter(line => line.trim())
+      .map(line => {
+        const storeId = line.split(',')[0];
+        return parseInt(storeId, 10);
+      })
+      .filter(id => !isNaN(id));
+
+    console.log(`Loaded ${CA_STORES.length} CA stores from walmart_stores_ca_only.csv`);
+    return CA_STORES;
+  } catch (error) {
+    console.error('Error loading CA stores, using defaults:', error);
+    CA_STORES = [2082, 2242, 5930]; // Fallback to original 3
+    return CA_STORES;
+  }
+}
 
 export class NashValidator {
   /**
@@ -35,6 +60,9 @@ export class NashValidator {
     let totalRows = 0;
     let nonCAStores = 0;
     const unknownCarriers = new Set<string>();
+
+    // Load CA stores list
+    const caStores = loadCAStores();
 
     try {
       // Check if file exists
@@ -100,7 +128,7 @@ export class NashValidator {
           errors.push(`Row ${i + 1}: Store Id must be numeric, got "${storeId}"`);
         } else if (storeId) {
           const storeNum = parseInt(storeId);
-          if (!CA_STORES.includes(storeNum)) {
+          if (!caStores.includes(storeNum)) {
             nonCAStores++;
           }
         }

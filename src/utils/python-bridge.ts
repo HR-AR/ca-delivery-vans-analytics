@@ -13,10 +13,18 @@ export async function runPythonScript(
   args: string[] = []
 ): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
-    const pythonPath = process.env.PYTHON_PATH || 'python3';
-    const scriptPath = path.join(__dirname, '../../scripts/analysis', scriptName);
+    // Use venv Python by default
+    const pythonPath = process.env.PYTHON_PATH || path.join(__dirname, '../../venv/bin/python3');
+    const projectRoot = path.join(__dirname, '../..');
 
-    const python = spawn(pythonPath, [scriptPath, ...args]);
+    // Convert 'dashboard.py' to 'scripts.analysis.dashboard' for module execution
+    const moduleName = `scripts.analysis.${scriptName.replace('.py', '')}`;
+
+    // Run as module: python -m scripts.analysis.dashboard
+    const python = spawn(pythonPath, ['-m', moduleName, ...args], {
+      cwd: projectRoot,
+      env: { ...process.env, PYTHONPATH: projectRoot }
+    });
 
     let dataString = '';
     let errorString = '';

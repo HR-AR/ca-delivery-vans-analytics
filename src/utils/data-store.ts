@@ -1,6 +1,28 @@
 import fs from 'fs';
 import path from 'path';
 
+// Load CA stores from CSV file (shared function)
+let CA_STORES_CACHE: string[] = [];
+function loadCAStoresForValidation(): string[] {
+  if (CA_STORES_CACHE.length > 0) return CA_STORES_CACHE;
+
+  try {
+    const caStoresPath = path.join(__dirname, '../../States/walmart_stores_ca_only.csv');
+    const content = fs.readFileSync(caStoresPath, 'utf-8');
+    const lines = content.split('\n').slice(1); // Skip header
+    CA_STORES_CACHE = lines
+      .filter(line => line.trim())
+      .map(line => line.split(',')[0])
+      .filter(id => id && !isNaN(parseInt(id, 10)));
+
+    return CA_STORES_CACHE;
+  } catch (error) {
+    console.error('Error loading CA stores, using defaults:', error);
+    CA_STORES_CACHE = ['2082', '2242', '5930']; // Fallback
+    return CA_STORES_CACHE;
+  }
+}
+
 // Type definitions
 export interface StoreInfo {
   spark_ytd_cpd?: number;
@@ -240,7 +262,7 @@ export async function bulkUploadSparkCPD(
   stores: Array<{ storeId: string; sparkCpd: number; targetBatchSize: number }>
 ): Promise<{ success: boolean; updated: number; errors: string[] }> {
   const registry = await loadStoreRegistry();
-  const CA_STORES = ['2082', '2242', '5930'];
+  const CA_STORES = loadCAStoresForValidation();
   const errors: string[] = [];
   let updated = 0;
 

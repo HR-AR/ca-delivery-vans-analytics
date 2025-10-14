@@ -79,6 +79,11 @@ app.post('/api/upload', upload.single('file'), async (req: Request, res: Respons
     );
     fs.renameSync(req.file.path, newPath);
 
+    // Calculate CA stores (total - non-CA)
+    const totalRows = validationResult.stats?.totalRows || 0;
+    const nonCAStores = validationResult.stats?.nonCAStores || 0;
+    const caStores = totalRows - nonCAStores;
+
     res.status(200).json({
       success: true,
       message: 'File uploaded and validated successfully',
@@ -86,9 +91,9 @@ app.post('/api/upload', upload.single('file'), async (req: Request, res: Respons
       savedAs: `nash_${timestamp}.csv`,
       size: req.file.size,
       validationResult: {
-        totalRows: validationResult.stats?.totalRows || 0,
-        caStores: 0, // Will be populated in Phase 2 with CA store registry
-        nonCAStoresExcluded: validationResult.stats?.nonCAStores || 0,
+        totalRows: totalRows,
+        caStores: caStores,
+        nonCAStoresExcluded: nonCAStores,
         carriers: validationResult.stats?.unknownCarriers || [],
         warnings: validationResult.warnings
       }
