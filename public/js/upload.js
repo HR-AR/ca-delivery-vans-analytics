@@ -150,8 +150,8 @@ async function uploadFile() {
     progressFill.style.width = '30%';
     progressText.textContent = 'Uploading file...';
 
-    // Clear previous results
-    resultsContainer.innerHTML = '';
+    // Note: Do NOT clear results here - let warning banner persist until new file is selected
+    // Results are cleared in validateAndDisplayFile() when user selects a new file
 
     // Create form data
     const formData = new FormData();
