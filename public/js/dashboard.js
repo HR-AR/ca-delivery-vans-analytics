@@ -183,8 +183,8 @@ async function initTotalOrdersChart() {
 
         // Get top 10 stores by total orders
         const sortedStores = storesArray
-            .filter(store => store.metrics && store.metrics.has_trips) // Python uses snake_case
-            .sort((a, b) => (b.metrics.total_orders || 0) - (a.metrics.total_orders || 0))
+            .filter(store => store.total_trips > 0) // Has trip data
+            .sort((a, b) => (b.total_orders || 0) - (a.total_orders || 0))
             .slice(0, 10);
 
         if (sortedStores.length === 0) {
@@ -194,8 +194,8 @@ async function initTotalOrdersChart() {
 
         // Prepare datasets for each store
         const datasets = sortedStores.map((store, index) => ({
-            label: `Store ${store.store_id}`, // Python uses snake_case
-            data: [store.metrics.total_orders],
+            label: `Store ${store.store_id}`,
+            data: [store.total_orders],
             borderColor: Object.values(COLORS)[index % Object.values(COLORS).length],
             backgroundColor: Object.values(COLORS)[index % Object.values(COLORS).length] + '20',
             tension: 0.4,
