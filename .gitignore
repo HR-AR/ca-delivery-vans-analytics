@@ -6,3 +6,6 @@ coverage/
 *.local.md
 tmp/
 uploads/
+data/*.json
+data/*.backup-*
+data/*.bak

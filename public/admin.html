@@ -24,210 +24,197 @@
 
     <!-- Main Content -->
     <div class="container">
-        <!-- Info Banner -->
-        <div class="alert alert-info">
-            <div class="alert-title">🚧 Admin Panel - Coming in Phase 2</div>
-            <div class="alert-content">
-                This section will be fully implemented in Phase 2. Features will include:<br>
-                • Rate card editor for carrier pricing<br>
-                • Spark CPD bulk upload functionality<br>
-                • Store configuration management<br>
-                • Target threshold settings
+        <!-- SECTION A: Spark CPD Bulk Upload -->
+        <div class="admin-section">
+            <h2>Spark CPD Bulk Upload</h2>
+            <p class="section-description">Upload CSV with columns: Store ID, Spark YTD CPD, Target Batch Size</p>
+
+            <div class="upload-zone" id="sparkCpdUploadZone">
+                <div class="upload-icon">📊</div>
+                <div class="upload-text">Click to upload or drag and drop Spark CPD CSV</div>
+                <div class="upload-hint">Format: Store ID, Spark YTD CPD, Target Batch Size</div>
+                <input type="file" id="sparkCpdFile" accept=".csv" style="display: none;">
+            </div>
+
+            <div id="sparkCpdFileInfo" class="file-selected hidden">
+                <div class="file-info">
+                    <span class="file-icon">📄</span>
+                    <div class="file-details">
+                        <div class="file-name" id="sparkCpdFileName"></div>
+                        <div class="file-size" id="sparkCpdFileSize"></div>
+                    </div>
+                </div>
+                <button class="remove-file" id="removeSparkCpdFile" title="Remove file">×</button>
+            </div>
+
+            <button id="uploadSparkCpd" class="btn btn-primary btn-block mt-2" disabled>Upload Spark CPD Data</button>
+
+            <div id="sparkCpdResult" class="result-box"></div>
+
+            <h3 class="csv-example-title">CSV Format Example:</h3>
+            <div class="table-container">
+                <table class="example-table">
+                    <thead>
+                        <tr>
+                            <th>Store ID</th>
+                            <th>Spark YTD CPD</th>
+                            <th>Target Batch Size</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>2082</td><td>5.60</td><td>92</td></tr>
+                        <tr><td>2242</td><td>6.20</td><td>87</td></tr>
+                        <tr><td>5930</td><td>5.80</td><td>95</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Rate Card Editor (Placeholder) -->
-        <div class="card">
-            <div class="card-header">Rate Card Editor</div>
-            <div class="card-body">
-                <p class="text-muted mb-2">
-                    Configure carrier rates for different stores and date ranges.
-                </p>
+        <!-- SECTION B: Vendor Rate Cards -->
+        <div class="admin-section">
+            <h2>Vendor Rate Cards</h2>
+            <p class="section-description">Configure carrier rates for cost calculations</p>
 
-                <div class="form-group">
-                    <label class="form-label">Store</label>
-                    <select class="form-select" id="rateStoreSelect" disabled>
-                        <option value="">Select a store...</option>
-                        <option value="2082">Store 2082</option>
-                        <option value="2242">Store 2242</option>
-                        <option value="5930">Store 5930</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Carrier</label>
-                    <select class="form-select" id="rateCarrierSelect" disabled>
-                        <option value="">Select a carrier...</option>
-                        <option value="FOX">FOX</option>
-                        <option value="NTG">NTG</option>
-                        <option value="FDC">FDC</option>
-                    </select>
-                </div>
-
-                <div class="dashboard-grid">
-                    <div class="form-group">
-                        <label class="form-label">Per Order Rate ($)</label>
-                        <input type="number" class="form-input" id="perOrderRate" placeholder="0.00" step="0.01" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Per Batch Rate ($)</label>
-                        <input type="number" class="form-input" id="perBatchRate" placeholder="0.00" step="0.01" disabled>
-                    </div>
-                </div>
-
-                <div class="dashboard-grid">
-                    <div class="form-group">
-                        <label class="form-label">Effective Start Date</label>
-                        <input type="date" class="form-input" id="effectiveStartDate" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Effective End Date</label>
-                        <input type="date" class="form-input" id="effectiveEndDate" disabled>
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" disabled>Save Rate Card</button>
-                <button class="btn btn-secondary" disabled>View Rate History</button>
-            </div>
-        </div>
-
-        <!-- Spark CPD Upload (Placeholder) -->
-        <div class="card">
-            <div class="card-header">Spark CPD Bulk Upload</div>
-            <div class="card-body">
-                <p class="text-muted mb-2">
-                    Upload Spark CPD data to compare against van delivery costs.
-                </p>
-
-                <div class="upload-zone" style="opacity: 0.5; cursor: not-allowed;">
-                    <div class="upload-icon">📊</div>
-                    <div class="upload-text">Click to upload Spark CPD CSV</div>
-                    <div class="upload-hint">Format: Date, Store Id, Spark CPD</div>
-                </div>
-
-                <div class="alert alert-warning mt-3">
-                    <div class="alert-title">⚠️ Feature Not Yet Available</div>
-                    <div class="alert-content">
-                        Spark CPD upload will be available in Phase 2.<br>
-                        Expected CSV format:<br>
-                        • Date (YYYY-MM-DD)<br>
-                        • Store Id (2082, 2242, 5930)<br>
-                        • Spark CPD (dollar amount)
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Target Settings (Placeholder) -->
-        <div class="card">
-            <div class="card-header">Target Thresholds</div>
-            <div class="card-body">
-                <p class="text-muted mb-2">
-                    Configure performance targets for monitoring and alerts.
-                </p>
-
-                <div class="dashboard-grid">
-                    <div class="form-group">
-                        <label class="form-label">Target CPD ($)</label>
-                        <input type="number" class="form-input" value="5.00" step="0.01" disabled>
-                        <span class="form-hint">Default target cost per delivery</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Target OTD %</label>
-                        <input type="number" class="form-input" value="95" min="0" max="100" disabled>
-                        <span class="form-hint">Minimum acceptable on-time delivery percentage</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Target Batch Density</label>
-                        <input type="number" class="form-input" value="10" step="1" disabled>
-                        <span class="form-hint">Target orders per batch</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Alert Threshold (%)</label>
-                        <input type="number" class="form-input" value="10" min="0" max="100" disabled>
-                        <span class="form-hint">Trigger alert when exceeding target by this percentage</span>
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" disabled>Save Targets</button>
-            </div>
-        </div>
-
-        <!-- Store Configuration (Placeholder) -->
-        <div class="card">
-            <div class="card-header">Store Configuration</div>
-            <div class="card-body">
-                <p class="text-muted mb-2">
-                    Manage CA store settings and metadata.
-                </p>
-
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Store ID</th>
-                                <th>Name</th>
-                                <th>Status</th>
-                                <th>Primary Carrier</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>2082</strong></td>
-                                <td>CA Store 2082</td>
-                                <td><span style="color: var(--success-green)">Active</span></td>
-                                <td>FOX</td>
-                                <td><button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;" disabled>Edit</button></td>
-                            </tr>
-                            <tr>
-                                <td><strong>2242</strong></td>
-                                <td>CA Store 2242</td>
-                                <td><span style="color: var(--success-green)">Active</span></td>
-                                <td>NTG</td>
-                                <td><button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;" disabled>Edit</button></td>
-                            </tr>
-                            <tr>
-                                <td><strong>5930</strong></td>
-                                <td>CA Store 5930</td>
-                                <td><span style="color: var(--success-green)">Active</span></td>
-                                <td>FOX</td>
-                                <td><button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;" disabled>Edit</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- System Settings (Placeholder) -->
-        <div class="card">
-            <div class="card-header">System Settings</div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label class="form-label">Data Retention Period (days)</label>
-                    <input type="number" class="form-input" value="365" min="30" max="3650" disabled>
-                    <span class="form-hint">How long to keep uploaded data</span>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Default Date Range (days)</label>
-                    <input type="number" class="form-input" value="30" min="7" max="365" disabled>
-                    <span class="form-hint">Default date range for dashboard charts</span>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        <input type="checkbox" id="autoRefresh" disabled>
-                        Enable auto-refresh dashboard (every 5 minutes)
+            <!-- FOX Card -->
+            <div class="rate-card" data-vendor="FOX">
+                <h3>FOX Transportation</h3>
+                <div class="rate-inputs">
+                    <label>
+                        <span class="rate-label">Base Rate (80 orders):</span>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" class="rate-input" data-field="base_rate_80" value="380.00" step="0.01">
+                        </div>
+                    </label>
+                    <label>
+                        <span class="rate-label">Base Rate (100 orders):</span>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" class="rate-input" data-field="base_rate_100" value="390.00" step="0.01">
+                        </div>
+                    </label>
+                    <label>
+                        <span class="rate-label">Contractual Adjustment:</span>
+                        <input type="number" class="rate-input" data-field="contractual_adjustment" value="1.00" step="0.01">
+                    </label>
+                    <label>
+                        <span class="rate-label">Notes:</span>
+                        <textarea class="rate-input" data-field="notes" rows="2" placeholder="Optional notes about this rate card"></textarea>
                     </label>
                 </div>
-
-                <button class="btn btn-primary" disabled>Save Settings</button>
+                <button class="btn btn-primary save-rate-card">Save FOX Rates</button>
+                <div class="rate-card-result"></div>
             </div>
+
+            <!-- NTG Card -->
+            <div class="rate-card" data-vendor="NTG">
+                <h3>NTG Logistics</h3>
+                <div class="rate-inputs">
+                    <label>
+                        <span class="rate-label">Base Rate (80 orders):</span>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" class="rate-input" data-field="base_rate_80" value="370.00" step="0.01">
+                        </div>
+                    </label>
+                    <label>
+                        <span class="rate-label">Base Rate (100 orders):</span>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" class="rate-input" data-field="base_rate_100" value="385.00" step="0.01">
+                        </div>
+                    </label>
+                    <label>
+                        <span class="rate-label">Contractual Adjustment:</span>
+                        <input type="number" class="rate-input" data-field="contractual_adjustment" value="1.00" step="0.01">
+                    </label>
+                    <label>
+                        <span class="rate-label">Notes:</span>
+                        <textarea class="rate-input" data-field="notes" rows="2" placeholder="Optional notes about this rate card"></textarea>
+                    </label>
+                </div>
+                <button class="btn btn-primary save-rate-card">Save NTG Rates</button>
+                <div class="rate-card-result"></div>
+            </div>
+
+            <!-- FDC Card -->
+            <div class="rate-card" data-vendor="FDC">
+                <h3>FDC Delivery</h3>
+                <div class="rate-inputs">
+                    <label>
+                        <span class="rate-label">Base Rate (80 orders):</span>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" class="rate-input" data-field="base_rate_80" value="375.00" step="0.01">
+                        </div>
+                    </label>
+                    <label>
+                        <span class="rate-label">Base Rate (100 orders):</span>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" class="rate-input" data-field="base_rate_100" value="395.00" step="0.01">
+                        </div>
+                    </label>
+                    <label>
+                        <span class="rate-label">Contractual Adjustment:</span>
+                        <input type="number" class="rate-input" data-field="contractual_adjustment" value="1.00" step="0.01">
+                    </label>
+                    <label>
+                        <span class="rate-label">Notes:</span>
+                        <textarea class="rate-input" data-field="notes" rows="2" placeholder="Optional notes about this rate card"></textarea>
+                    </label>
+                </div>
+                <button class="btn btn-primary save-rate-card">Save FDC Rates</button>
+                <div class="rate-card-result"></div>
+            </div>
+        </div>
+
+        <!-- SECTION C: Store Registry Viewer -->
+        <div class="admin-section">
+            <h2>CA Store Registry</h2>
+            <p class="section-description">Manage store configurations and Spark CPD data (273 stores)</p>
+
+            <div class="registry-controls">
+                <input type="text" id="storeSearch" class="form-input" placeholder="Search by Store ID..." style="max-width: 300px;">
+                <button id="refreshRegistry" class="btn btn-secondary">Refresh Registry</button>
+            </div>
+
+            <div class="table-container mt-2">
+                <table id="storeRegistryTable" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Store ID</th>
+                            <th>Spark CPD</th>
+                            <th>Target Batch</th>
+                            <th>Last Seen</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registryTableBody">
+                        <tr>
+                            <td colspan="6" class="table-loading">
+                                <div class="loading-spinner-small"></div>
+                                <span>Loading store registry...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <button id="prevPage" class="btn btn-secondary" disabled>Previous</button>
+                <span id="pageInfo" class="page-info">Page 1 of 1</span>
+                <button id="nextPage" class="btn btn-secondary" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay (hidden by default) -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Processing...</div>
         </div>
     </div>
 
