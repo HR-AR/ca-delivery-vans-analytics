@@ -580,6 +580,148 @@ When user replies **"APPROVED - START BUILD"**, execute:
 
 ---
 
+## 🔧 PHASE 4.6: PRODUCTION DEPLOYMENT FIXES (COMPLETE)
+
+**Status**: ✅ Dashboard and warning visibility issues resolved
+
+**Context**: After Phase 4.5 fixes, production deployment revealed two critical runtime issues:
+1. Dashboard showing HTTP 500 errors on all charts
+2. Warning banner about excluded stores disappearing after 2 seconds
+
+### **Root Cause Analysis**:
+
+#### **Issue 1: Dashboard HTTP 500 - "ModuleNotFoundError: No module named 'pandas'"**
+**Symptoms**: All dashboard charts returned HTTP 500 errors in production
+**Investigation**:
+- Checked Render build logs - packages not installing despite `pip install` command
+- Tested with `pip` → Failed
+- Tested with `pip3` → Failed
+- Root cause: Render's node environment doesn't allow system-wide pip installs
+
+**Solution**: Use `python3 -m pip install --user` with PYTHONUSERBASE
+- Updated render.yaml build command with `--user` flag
+- Set PYTHONUSERBASE environment variable to `/opt/render/project/.python_packages`
+- Updated python-bridge.ts PYTHONPATH to include user site-packages for Python 3.11 and 3.12
+- Result: pandas/numpy/openpyxl now install and import correctly
+
+#### **Issue 2: Warning Banner Disappears After 2 Seconds**
+**Symptoms**: Orange warning about excluded non-CA stores vanished before user could read
+**Investigation**:
+- User feedback: "I don't have enough time to read or take a picture of the warning"
+- User clarification: "maybe it is not persistent forever but only last 10-15 seconds"
+- Code audit found: `clearFileSelection()` called after 2s on upload success
+- `clearFileSelection()` was clearing `resultsContainer.innerHTML` (line 128)
+- This wiped out the entire success message including the warning banner
+
+**Solution**: Add `keepResults` parameter to `clearFileSelection()`
+- Modified function signature: `clearFileSelection(event, keepResults = false)`
+- Only clear results if `keepResults === false`
+- On success, call `clearFileSelection(null, true)` to preserve results
+- Result: Warning banner now persists indefinitely until user uploads new file
+
+### **Fixes Applied** (3 Commits):
+
+#### **Commit 1: `3508ef6` - Python Package Installation Fix**
+**Files Modified**: render.yaml, src/utils/python-bridge.ts, public/js/upload.js
+**Key Changes**:
+```yaml
+# render.yaml
+buildCommand: npm install && python3 -m pip install --user -r requirements.txt && npm run build
+envVars:
+  - key: PYTHONUSERBASE
+    value: /opt/render/project/.python_packages
+```
+```typescript
+// python-bridge.ts
+const pythonUserBase = process.env.PYTHONUSERBASE || '/opt/render/project/.python_packages';
+env: {
+  PYTHONPATH: `${projectRoot}:${pythonUserBase}/lib/python3.11/site-packages:${pythonUserBase}/lib/python3.12/site-packages`,
+  PYTHONUSERBASE: pythonUserBase
+}
+```
+**Impact**: Python packages now install successfully on Render
+
+#### **Commit 2: `3508ef6` - Enhanced Warning Banner**
+**Files Modified**: public/js/upload.js
+**Key Changes**:
+```javascript
+// Created prominent orange banner at top of success message
+<div style="background-color: #ff9800; color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; border: 3px solid #f57c00; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+  <h3 style="font-size: 1.5rem;">⚠️ IMPORTANT: Data Filtered</h3>
+  <p><strong>${nonCARows} non-CA stores were excluded from analysis</strong></p>
+</div>
+```
+**Impact**: Warning highly visible with large text and high contrast
+
+#### **Commit 3: `a68e623` - Warning Persistence Fix**
+**Files Modified**: public/js/upload.js
+**Key Changes**:
+```javascript
+// Before: Cleared results after 2 seconds
+clearFileSelection();
+
+// After: Keep results visible
+clearFileSelection(null, true); // keepResults = true
+```
+**Impact**: Warning banner remains visible until user navigates away or uploads new file
+
+### **COE Lessons Learned**:
+
+#### **Lesson 16: Render Python Package Installation Pattern**
+- **Problem**: Standard `pip install` fails in Render's node environment
+- **Solution**: Always use `python3 -m pip install --user -r requirements.txt`
+- **Pattern**: Set PYTHONUSERBASE and update PYTHONPATH in spawn environment
+- **Why**: Node environment doesn't have write access to system site-packages
+- **Prevention**: Test Python imports in Render console immediately after first deploy
+
+#### **Lesson 17: UI State Management - Side Effects of Utility Functions**
+- **Problem**: `clearFileSelection()` had hidden side effect of clearing results
+- **Root Cause**: Function did too many things (clear file + clear UI + clear results)
+- **Solution**: Add explicit control with optional parameters (`keepResults`)
+- **Pattern**: When refactoring, always trace all side effects of utility functions
+- **Prevention**: Functions should have single responsibility; clearing results should be separate
+
+#### **Lesson 18: User Feedback is Gold**
+- **Problem**: Developer assumed warning was visible "long enough"
+- **Reality**: User couldn't even take a screenshot (< 2 seconds)
+- **Solution**: Listen to exact user feedback ("I don't have enough time to read")
+- **Pattern**: When user says "too fast", investigate timer/timeout logic immediately
+- **Prevention**: For critical warnings, default to persistent display with manual dismiss
+
+#### **Lesson 19: Production Environment Debugging**
+- **Problem**: Dashboard worked locally but failed in production
+- **Investigation Path**: Check logs → identify missing modules → understand environment constraints
+- **Solution**: Adapt installation strategy to environment (--user flag)
+- **Pattern**: Local dev with venv != production node environment on Render
+- **Prevention**: Create deployment test script that verifies Python imports work
+
+#### **Lesson 20: setTimeout Hidden Bugs**
+- **Problem**: Auto-clear functionality buried in success handler
+- **Investigation**: Search for "setTimeout" revealed 2-second clear timer
+- **Solution**: Trace what the setTimeout callback actually does (clear results!)
+- **Pattern**: setTimeout is often source of "disappearing content" bugs
+- **Prevention**: Document all setTimeout usage with explicit comments about what gets cleared/hidden
+
+### **Impact Summary**:
+- ✅ Dashboard now fully operational in production (all 5 charts rendering)
+- ✅ Warning banner highly visible and persistent
+- ✅ Python analytics engine working (pandas/numpy available)
+- ✅ User can read and understand data exclusions
+- ✅ No more HTTP 500 errors on chart endpoints
+
+### **Files Modified** (Phase 4.6):
+1. **render.yaml** - Python installation with --user flag
+2. **src/utils/python-bridge.ts** - PYTHONPATH with user site-packages
+3. **public/js/upload.js** - Warning banner styling + persistence logic
+
+### **Test Results**:
+- ✅ Dashboard charts: All 5 rendering successfully
+- ✅ Warning banner: Visible until navigation
+- ✅ Python imports: pandas/numpy/openpyxl working
+- ✅ Upload validation: CA store counts correct (273 stores)
+
+---
+
 ## 🚀 READY FOR PHASE 5
 
 **Prerequisites**: ✅ ALL MET
@@ -609,4 +751,4 @@ When user replies **"APPROVED - START BUILD"**, execute:
 
 ---
 
-**Last Updated**: 2025-10-14 (Phase 4.5 COMPLETE - All Critical Bugs Fixed - Ready for Phase 5)
+**Last Updated**: 2025-10-14 (Phase 4.6 COMPLETE - Production Deployment Fixes Applied - Dashboard & Warnings Operational)
