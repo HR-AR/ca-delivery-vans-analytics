@@ -147,11 +147,24 @@ function showChartCanvas(chartId) {
     const placeholder = document.getElementById(`chart${chartId}`);
     const canvas = document.getElementById(`${chartId}Chart`);
 
-    if (placeholder) placeholder.classList.add('hidden');
+    console.log(`showChartCanvas(${chartId}):`, {
+        placeholder: placeholder ? 'found' : 'NOT FOUND',
+        canvas: canvas ? 'found' : 'NOT FOUND',
+        canvasHasHidden: canvas ? canvas.classList.contains('hidden') : 'N/A'
+    });
+
+    if (placeholder) {
+        placeholder.classList.add('hidden');
+        console.log(`  → Placeholder hidden`);
+    }
+
     if (canvas) {
+        console.log(`  → Canvas classes before:`, canvas.className);
         canvas.classList.remove('hidden');
-        // Force display in case classList.remove fails
         canvas.style.display = 'block';
+        console.log(`  → Canvas classes after:`, canvas.className);
+        console.log(`  → Canvas display style:`, canvas.style.display);
+        console.log(`  → Canvas computed display:`, window.getComputedStyle(canvas).display);
     }
 }
 
