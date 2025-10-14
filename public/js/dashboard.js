@@ -148,7 +148,11 @@ function showChartCanvas(chartId) {
     const canvas = document.getElementById(`${chartId}Chart`);
 
     if (placeholder) placeholder.classList.add('hidden');
-    if (canvas) canvas.classList.remove('hidden');
+    if (canvas) {
+        canvas.classList.remove('hidden');
+        // Force display in case classList.remove fails
+        canvas.style.display = 'block';
+    }
 }
 
 // ==========================================
