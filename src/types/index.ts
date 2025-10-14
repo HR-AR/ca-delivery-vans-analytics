@@ -8,6 +8,7 @@ export interface UploadResponse {
   success: boolean;
   message: string;
   filename: string;
+  savedAs?: string;
   size: number;
   validationResult?: {
     totalRows: number;
@@ -131,4 +132,84 @@ export interface NashData {
       deliveredOrders?: number;
     };
   };
+}
+
+// Phase 3: Analytics Types
+
+export interface DashboardMetrics {
+  total_orders: number;
+  total_trips: number;
+  avg_van_cpd: number;
+  avg_spark_cpd: number;
+  target_cpd: number;
+  otd_percentage: number;
+  active_stores: number;
+  carriers: string[];
+}
+
+export interface StoreAnalysis {
+  store_id: string;
+  total_orders: number;
+  total_trips: number;
+  van_cpd: number;
+  spark_cpd: number;
+  cpd_difference: number;
+  otd_percentage: number;
+  avg_batch_size: number;
+  target_batch_size: number;
+  carriers: string[];
+  date_range: {
+    start: string | null;
+    end: string | null;
+  };
+}
+
+export interface VendorMetrics {
+  total_trips: number;
+  total_orders: number;
+  avg_cpd: number;
+  otd_percentage: number;
+  avg_driver_time: number;
+  drops_per_hour: number;
+}
+
+export interface VendorAnalysis {
+  [vendor: string]: VendorMetrics;
+}
+
+export interface CpdComparison {
+  stores: {
+    [storeId: string]: {
+      van_cpd: number;
+      spark_cpd: number;
+      savings: number;
+      savings_percentage: number;
+    };
+  };
+  overall: {
+    avg_van_cpd: number;
+    avg_spark_cpd: number;
+    avg_savings: number;
+  };
+}
+
+export interface BatchAnalysis {
+  store_id: string;
+  avg_batch_size: number;
+  target_batch_size: number;
+  efficiency_percentage: number;
+  total_trips: number;
+  batch_size_distribution: {
+    [range: string]: number;
+  };
+}
+
+export interface PerformanceMetrics {
+  overall_otd: number;
+  avg_driver_time: number;
+  avg_load_time: number;
+  avg_dwell_time: number;
+  avg_trip_time: number;
+  drops_per_hour: number;
+  delivery_success_rate: number;
 }

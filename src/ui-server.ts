@@ -14,6 +14,7 @@ import {
   getRateCard,
   bulkUploadSparkCPD
 } from './utils/data-store';
+import { AnalyticsService } from './services/analytics.service';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,14 +55,14 @@ app.post('/api/upload', upload.single('file'), async (req: Request, res: Respons
     // Validate Nash CSV file
     const validationResult = await NashValidator.validate(req.file.path);
 
-    // Clean up uploaded file after validation
-    try {
-      fs.unlinkSync(req.file.path);
-    } catch (cleanupError) {
-      console.error('File cleanup error:', cleanupError);
-    }
-
     if (!validationResult.valid) {
+      // Clean up uploaded file if validation fails
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error('File cleanup error:', cleanupError);
+      }
+
       return res.status(400).json({
         success: false,
         error: validationResult.errors.join(', '),
@@ -70,10 +71,19 @@ app.post('/api/upload', upload.single('file'), async (req: Request, res: Respons
       } as ErrorResponse);
     }
 
+    // Keep the file for analytics (rename with timestamp)
+    const timestamp = Date.now();
+    const newPath = path.join(
+      path.dirname(req.file.path),
+      `nash_${timestamp}.csv`
+    );
+    fs.renameSync(req.file.path, newPath);
+
     res.status(200).json({
       success: true,
       message: 'File uploaded and validated successfully',
       filename: req.file.originalname,
+      savedAs: `nash_${timestamp}.csv`,
       size: req.file.size,
       validationResult: {
         totalRows: validationResult.stats?.totalRows || 0,
@@ -254,6 +264,197 @@ app.put('/api/rate-cards/:vendor', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update rate card'
+    });
+  }
+});
+
+// Helper function to get latest Nash CSV file
+function getLatestNashFile(): string | null {
+  if (!fs.existsSync(uploadsDir)) {
+    return null;
+  }
+
+  const files = fs.readdirSync(uploadsDir)
+    .filter(f => f.endsWith('.csv'))
+    .map(f => ({
+      name: f,
+      path: path.join(uploadsDir, f),
+      time: fs.statSync(path.join(uploadsDir, f)).mtime.getTime()
+    }))
+    .sort((a, b) => b.time - a.time);
+
+  return files.length > 0 ? files[0].path : null;
+}
+
+// Analytics Endpoints
+
+// GET /api/analytics/dashboard - Calculate dashboard metrics
+app.get('/api/analytics/dashboard', async (_req: Request, res: Response) => {
+  try {
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available. Please upload a CSV file first.'
+      });
+    }
+
+    const result = await AnalyticsService.calculateDashboard(latestFile);
+    res.json(result);
+  } catch (error) {
+    console.error('Dashboard analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Analytics calculation failed'
+    });
+  }
+});
+
+// GET /api/analytics/stores - Analyze all stores
+app.get('/api/analytics/stores', async (_req: Request, res: Response) => {
+  try {
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available'
+      });
+    }
+
+    // Get all CA stores and analyze each
+    const storeRegistry = await loadStoreRegistry();
+    const stores = Object.keys(storeRegistry.stores);
+
+    const results = await Promise.all(
+      stores.map(storeId =>
+        AnalyticsService.analyzeStore(latestFile, storeId)
+      )
+    );
+
+    res.json({ stores: results });
+  } catch (error) {
+    console.error('Store analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Store analysis failed'
+    });
+  }
+});
+
+// GET /api/analytics/stores/:storeId - Analyze specific store
+app.get('/api/analytics/stores/:storeId', async (req: Request, res: Response) => {
+  try {
+    const { storeId } = req.params;
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available'
+      });
+    }
+
+    const result = await AnalyticsService.analyzeStore(latestFile, storeId);
+    res.json(result);
+  } catch (error) {
+    console.error('Store analysis error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Analysis failed'
+    });
+  }
+});
+
+// GET /api/analytics/vendors - Compare vendor performance
+app.get('/api/analytics/vendors', async (_req: Request, res: Response) => {
+  try {
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available'
+      });
+    }
+
+    const result = await AnalyticsService.compareVendors(latestFile);
+    res.json(result);
+  } catch (error) {
+    console.error('Vendor analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Vendor analysis failed'
+    });
+  }
+});
+
+// GET /api/analytics/cpd-comparison - Compare Van CPD vs Spark CPD
+app.get('/api/analytics/cpd-comparison', async (_req: Request, res: Response) => {
+  try {
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available'
+      });
+    }
+
+    const result = await AnalyticsService.analyzeCpd(latestFile);
+    res.json(result);
+  } catch (error) {
+    console.error('CPD analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'CPD analysis failed'
+    });
+  }
+});
+
+// GET /api/analytics/batch-analysis - Analyze batch performance
+app.get('/api/analytics/batch-analysis', async (_req: Request, res: Response) => {
+  try {
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available'
+      });
+    }
+
+    const result = await AnalyticsService.analyzeBatches(latestFile);
+    res.json(result);
+  } catch (error) {
+    console.error('Batch analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Batch analysis failed'
+    });
+  }
+});
+
+// GET /api/analytics/performance - Calculate performance metrics
+app.get('/api/analytics/performance', async (_req: Request, res: Response) => {
+  try {
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available'
+      });
+    }
+
+    const result = await AnalyticsService.calculatePerformance(latestFile);
+    res.json(result);
+  } catch (error) {
+    console.error('Performance analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Performance calculation failed'
     });
   }
 });
