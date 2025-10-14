@@ -143,11 +143,11 @@ function showChartError(chartId, message) {
 /**
  * Hide chart placeholder and show canvas
  */
-function showChartCanvas(chartId) {
+function showChartCanvas(chartId, canvasId) {
     const placeholder = document.getElementById(`chart${chartId}`);
-    const canvas = document.getElementById(`${chartId}Chart`);
+    const canvas = document.getElementById(canvasId);
 
-    console.log(`showChartCanvas(${chartId}):`, {
+    console.log(`showChartCanvas(${chartId}, ${canvasId}):`, {
         placeholder: placeholder ? 'found' : 'NOT FOUND',
         canvas: canvas ? 'found' : 'NOT FOUND',
         canvasHasHidden: canvas ? canvas.classList.contains('hidden') : 'N/A'
@@ -216,7 +216,7 @@ async function initTotalOrdersChart() {
             Object.values(COLORS)[index % Object.values(COLORS).length]
         );
 
-        showChartCanvas(chartId);
+        showChartCanvas(chartId, canvasId);
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
 
@@ -314,7 +314,7 @@ async function initCPDChart() {
         const vanColors = vanCPD.map(cpd => cpd > 5 ? COLORS.red : COLORS.blue);
         const sparkColors = sparkCPD.map(cpd => cpd > 5 ? COLORS.red : COLORS.green);
 
-        showChartCanvas(chartId);
+        showChartCanvas(chartId, canvasId);
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
 
@@ -433,7 +433,7 @@ async function initStorePerformanceChart() {
         const ordersData = topStores.map(store => store.total_orders || 0);
         const tripsData = topStores.map(store => store.total_trips || 0);
 
-        showChartCanvas(chartId);
+        showChartCanvas(chartId, canvasId);
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
 
@@ -545,7 +545,7 @@ async function initVendorChart() {
             return COLORS.red;
         });
 
-        showChartCanvas(chartId);
+        showChartCanvas(chartId, canvasId);
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
 
@@ -653,7 +653,7 @@ async function initBatchDensityChart() {
             pointHoverRadius: 7
         }));
 
-        showChartCanvas(chartId);
+        showChartCanvas(chartId, canvasId);
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
 
