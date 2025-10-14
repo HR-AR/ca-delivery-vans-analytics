@@ -22,14 +22,12 @@ export async function runPythonScript(
     const moduleName = `scripts.analysis.${scriptName.replace('.py', '')}`;
 
     // Run as module: python -m scripts.analysis.dashboard
-    // Add user site-packages to Python path for Render (Python 3.13.4)
-    const pythonUserBase = process.env.PYTHONUSERBASE || '/opt/render/project/.python_packages';
+    // Render uses virtualenv, packages installed to venv automatically
     const python = spawn(pythonPath, ['-m', moduleName, ...args], {
       cwd: projectRoot,
       env: {
         ...process.env,
-        PYTHONPATH: `${projectRoot}:${pythonUserBase}/lib/python3.13/site-packages`,
-        PYTHONUSERBASE: pythonUserBase
+        PYTHONPATH: projectRoot
       }
     });
 
