@@ -8,7 +8,8 @@ interface ValidationResult {
   stats?: {
     totalRows: number;
     nonCAStores: number;
-    unknownCarriers: string[];
+    unknownCarriers: string[]; // Excluded carriers (Roadie)
+    discoveredCarriers?: string[]; // All accepted carriers (normalized)
   };
 }
 
