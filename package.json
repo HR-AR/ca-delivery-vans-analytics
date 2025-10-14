@@ -1,0 +1,38 @@
+{
+  "name": "ca-delivery-vans-analytics",
+  "version": "0.1.0",
+  "scripts": {
+    "lint": "eslint src tests --ext .ts",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn --transpile-only src/ui-server.ts",
+    "start": "node dist/ui-server.js",
+    "validate": "npm run lint && npm test && npm run build",
+    "prp": "node scripts/context-engine.mjs prp",
+    "scout": "node scripts/context-engine.mjs scout",
+    "implement": "node scripts/context-engine.mjs implement",
+    "sync": "node scripts/context-engine.mjs sync"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.23",
+    "@types/jest": "^29.5.14",
+    "@types/multer": "^1.4.13",
+    "@types/node": "^20.19.21",
+    "@types/supertest": "^2.0.12",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.4.5",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA Delivery Vans Analytics - Upload</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <h1>CA Delivery Vans Analytics</h1>
+                <p class="header-subtitle">Upload and analyze delivery data</p>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link active">Upload</a>
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-header">Upload Delivery Data</div>
+            <div class="card-body">
+                <p class="text-muted mb-2">
+                    Upload your CSV file containing delivery data. The file will be validated before processing.
+                </p>
+
+                <!-- Upload Zone -->
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Click to select a CSV file or drag and drop</div>
+                    <div class="upload-hint">Only CSV files are accepted</div>
+                    <input type="file" id="fileInput" accept=".csv" />
+                </div>
+
+                <!-- Selected File Display -->
+                <div id="fileSelectedContainer" class="hidden">
+                    <div class="file-selected">
+                        <div class="file-info">
+                            <span class="file-icon">📄</span>
+                            <div class="file-details">
+                                <div class="file-name" id="fileName"></div>
+                                <div class="file-size" id="fileSize"></div>
+                            </div>
+                        </div>
+                        <button class="remove-file" id="removeFileBtn" title="Remove file">✕</button>
+                    </div>
+
+                    <!-- Upload Button -->
+                    <button class="btn btn-primary btn-block mt-2" id="uploadBtn">
+                        <span>Upload File</span>
+                    </button>
+                </div>
+
+                <!-- Progress Container -->
+                <div id="progressContainer" class="progress-container hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Uploading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer"></div>
+
+        <!-- Instructions Card -->
+        <div class="card">
+            <div class="card-header">Required CSV Format</div>
+            <div class="card-body">
+                <p class="text-muted mb-2">Your CSV file must include the following columns:</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Column Name</th>
+                                <th>Description</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Date</strong></td>
+                                <td>Delivery date</td>
+                                <td>2025-01-15</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Store Id</strong></td>
+                                <td>Store identifier (must be CA store)</td>
+                                <td>2082, 2242, 5930</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Carrier</strong></td>
+                                <td>Delivery carrier name</td>
+                                <td>FOX, NTG, FDC</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Orders</strong></td>
+                                <td>Number of orders</td>
+                                <td>25</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Batches</strong></td>
+                                <td>Number of batches</td>
+                                <td>3</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cost</strong></td>
+                                <td>Total delivery cost</td>
+                                <td>150.00</td>
+                            </tr>
+                            <tr>
+                                <td><strong>OTD Orders</strong></td>
+                                <td>On-time delivery orders</td>
+                                <td>23</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <div class="alert-title">💡 Important Notes</div>
+                    <div class="alert-content">
+                        • Column names are case-sensitive (e.g., "Store Id" not "Store ID")<br>
+                        • Only CA stores (2082, 2242, 5930) will be processed<br>
+                        • Non-CA stores will be automatically filtered out<br>
+                        • Date format should be YYYY-MM-DD
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Processing your file...</div>
+        </div>
+    </div>
+
+    <script src="js/upload.js"></script>
+</body>
+</html>
