@@ -25,7 +25,7 @@ describe('Upload Endpoint', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.message).toBe('File uploaded successfully');
+      expect(response.body.message).toBe('File uploaded and validated successfully');
       expect(response.body.filename).toBe('valid-nash.csv');
       expect(response.body.size).toBeGreaterThan(0);
     });

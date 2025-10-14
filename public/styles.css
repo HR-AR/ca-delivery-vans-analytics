@@ -985,3 +985,252 @@ textarea.rate-input {
     padding: 0.5rem;
   }
 }
+
+/* ========================================
+   Chart Enhancements (Phase 4)
+   ======================================== */
+
+/* Chart container improvements */
+.chart-container canvas {
+  max-height: 280px;
+}
+
+/* Chart error state */
+.chart-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 2rem;
+  background-color: #fee2e2;
+  border-radius: var(--radius);
+  border: 1px solid var(--error-red);
+}
+
+.chart-error-icon {
+  font-size: 2.5rem;
+  color: var(--error-red);
+  margin-bottom: 1rem;
+}
+
+.chart-error-title {
+  font-weight: 600;
+  color: #991b1b;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.chart-error-message {
+  color: var(--secondary-gray);
+  font-size: 0.875rem;
+}
+
+/* Chart loading state improvements */
+.chart-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+}
+
+.chart-loading-text {
+  color: var(--secondary-gray);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Highlight card enhancements */
+.highlight-card {
+  transition: var(--transition);
+}
+
+.highlight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Badge styles for highlights */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-danger {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-info {
+  background-color: #dbeafe;
+  color: #1e3a8a;
+}
+
+/* Chart card hover effect */
+.chart-card {
+  transition: var(--transition);
+}
+
+.chart-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Full-width chart card (for Chart 1) */
+.chart-card.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Responsive chart adjustments */
+@media (max-width: 768px) {
+  .chart-container {
+    height: 220px;
+  }
+
+  .chart-container canvas {
+    max-height: 220px;
+  }
+
+  .highlights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .highlight-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-card {
+    min-height: 300px;
+  }
+
+  .chart-container {
+    height: 200px;
+  }
+}
+
+/* Refresh button styling */
+#refreshBtn {
+  white-space: nowrap;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+
+/* Data summary grid improvements */
+.data-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.summary-item {
+  padding: 1rem;
+  background-color: var(--gray-light);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--primary-blue);
+}
+
+.summary-item-label {
+  font-weight: 600;
+  color: var(--gray-dark);
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.summary-item-value {
+  color: var(--secondary-gray);
+  font-size: 1rem;
+}
+
+/* Chart tooltips enhancement (if needed) */
+.chartjs-tooltip {
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: var(--radius);
+  color: white;
+  padding: 0.5rem;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -100%);
+  transition: opacity 0.2s ease;
+}
+
+/* No data state */
+.no-data-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.no-data-icon {
+  font-size: 3rem;
+  color: var(--secondary-gray);
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.no-data-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray-dark);
+  margin-bottom: 0.5rem;
+}
+
+.no-data-message {
+  color: var(--secondary-gray);
+  margin-bottom: 1.5rem;
+  max-width: 400px;
+}
+
+/* Chart legend improvements */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--gray-border);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--gray-dark);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Chart annotations */
+.chart-annotation {
+  font-size: 0.75rem;
+  color: var(--secondary-gray);
+  font-style: italic;
+  margin-top: 0.5rem;
+  text-align: center;
+}

@@ -39,19 +39,17 @@ describe('End-to-End Upload Flow', () => {
     });
 
     it('should detect validation errors in uploaded invalid CSV', async () => {
-      // Step 1: Upload file (should succeed - file format is CSV)
+      // Upload file with validation errors (should be rejected)
       const uploadResponse = await request(app)
         .post('/api/upload')
         .attach('file', invalidCsvPath);
 
-      expect(uploadResponse.status).toBe(200);
-      expect(uploadResponse.body.success).toBe(true);
-
-      // Step 2: Validate the content (should fail validation)
-      const validationResult = await NashValidator.validate(invalidCsvPath);
-
-      expect(validationResult.valid).toBe(false);
-      expect(validationResult.errors.length).toBeGreaterThan(0);
+      // Should fail with 400 due to validation errors
+      expect(uploadResponse.status).toBe(400);
+      expect(uploadResponse.body.success).toBe(false);
+      expect(uploadResponse.body.error).toBeDefined();
+      expect(uploadResponse.body.validationErrors).toBeDefined();
+      expect(uploadResponse.body.validationErrors.length).toBeGreaterThan(0);
     });
 
     it('should provide detailed error messages for format issues', async () => {
@@ -135,12 +133,10 @@ NTG,2025-10-08,1916,id-2,Jane Doe,80,78`;
         .post('/api/upload')
         .attach('file', corruptedPath);
 
-      expect(uploadResponse.status).toBe(200);
-
-      const validationResult = await NashValidator.validate(corruptedPath);
-
-      expect(validationResult.valid).toBe(false);
-      expect(validationResult.errors.length).toBeGreaterThan(0);
+      // Should fail validation and return 400
+      expect(uploadResponse.status).toBe(400);
+      expect(uploadResponse.body.success).toBe(false);
+      expect(uploadResponse.body.error).toBeDefined();
 
       // Clean up
       fs.unlinkSync(corruptedPath);
