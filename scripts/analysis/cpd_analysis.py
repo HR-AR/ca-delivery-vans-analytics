@@ -67,13 +67,14 @@ def compare_cpd(
 
     Returns:
         dict: Comparison data with store-level and overall metrics
+              stores is an ARRAY of objects (not a dict)
     """
     # Filter to CA stores
     ca_df = filter_ca_stores(nash_df.copy())
 
     if ca_df.empty:
         return {
-            "stores": {},
+            "stores": [],
             "overall": {
                 "avg_van_cpd": 0.0,
                 "avg_spark_cpd": 0.0,
@@ -85,7 +86,7 @@ def compare_cpd(
     ca_df['Carrier_Normalized'] = ca_df['Carrier'].apply(normalize_carrier_name)
 
     # Calculate CPD for each store
-    store_cpd = {}
+    store_cpd_list = []
     all_van_cpd = []
     all_spark_cpd = []
 
@@ -94,12 +95,16 @@ def compare_cpd(
 
         # Calculate Van CPD for this store
         van_cpd_values = []
+        total_van_orders = 0
+
         for _, row in store_df.iterrows():
             carrier = row['Carrier_Normalized']
             total_orders = row['Total Orders']
 
             if pd.isna(total_orders) or total_orders == 0:
                 continue
+
+            total_van_orders += int(total_orders)
 
             vendor_rates = rate_cards.get('vendors', {}).get(carrier)
             if not vendor_rates:
@@ -125,12 +130,15 @@ def compare_cpd(
         savings = spark_cpd - avg_van_cpd
         savings_percentage = (savings / spark_cpd * 100) if spark_cpd > 0 else 0
 
-        store_cpd[str(store_id)] = {
+        # Add to array (not dict)
+        store_cpd_list.append({
+            "store_id": str(store_id),
             "van_cpd": round(avg_van_cpd, 2),
             "spark_cpd": round(spark_cpd, 2),
             "savings": round(savings, 2),
-            "savings_percentage": round(savings_percentage, 1)
-        }
+            "savings_percentage": round(savings_percentage, 1),
+            "van_orders": total_van_orders
+        })
 
         all_van_cpd.append(avg_van_cpd)
         all_spark_cpd.append(spark_cpd)
@@ -143,7 +151,7 @@ def compare_cpd(
     overall["avg_savings"] = round(overall["avg_spark_cpd"] - overall["avg_van_cpd"], 2)
 
     return {
-        "stores": store_cpd,
+        "stores": store_cpd_list,
         "overall": overall
     }
 

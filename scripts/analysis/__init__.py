@@ -169,7 +169,14 @@ def get_date_range(df: pd.DataFrame) -> Dict[str, str]:
 
 def load_nash_data(file_path: str) -> pd.DataFrame:
     """
-    Load Nash CSV data with proper handling of data types.
+    Load Nash CSV data with comprehensive data cleaning and type conversion.
+
+    Handles:
+    - String field whitespace trimming
+    - Numeric field type conversion with error handling
+    - Mixed date format parsing
+    - Boolean field conversion
+    - Missing value handling
 
     Args:
         file_path: Path to Nash CSV file
@@ -179,13 +186,35 @@ def load_nash_data(file_path: str) -> pd.DataFrame:
     """
     df = pd.read_csv(file_path)
 
-    # Convert Store Id to string
-    if 'Store Id' in df.columns:
-        df['Store Id'] = df['Store Id'].astype(str)
+    # 1. TRIM WHITESPACE from all string columns
+    string_columns = df.select_dtypes(include=['object']).columns
+    for col in string_columns:
+        df[col] = df[col].astype(str).str.strip()
 
-    # Parse dates
+    # 2. CONVERT STORE ID to string (critical for matching)
+    if 'Store Id' in df.columns:
+        df['Store Id'] = df['Store Id'].astype(str).str.strip()
+
+    # 3. PARSE DATES with mixed format support
     if 'Date' in df.columns:
-        df['Date'] = pd.to_datetime(df['Date'])
+        df['Date'] = pd.to_datetime(df['Date'], format='mixed', errors='coerce')
+
+    # 4. CONVERT NUMERIC FIELDS with error handling
+    numeric_fields = ['Total Orders', 'Total Trips', 'Trip Distance']
+    for field in numeric_fields:
+        if field in df.columns:
+            # pd.to_numeric converts to float64, then to nullable Int64
+            df[field] = pd.to_numeric(df[field], errors='coerce').astype('Int64')
+
+    # 5. CONVERT BOOLEAN FIELDS (0/1 to Int8)
+    boolean_fields = ['Is Pickup Arrived Ontime', 'Has OnTime']
+    for field in boolean_fields:
+        if field in df.columns:
+            df[field] = pd.to_numeric(df[field], errors='coerce').astype('Int8')
+
+    # 6. TRIM CARRIER NAMES (critical for mapping)
+    if 'Carrier' in df.columns:
+        df['Carrier'] = df['Carrier'].str.strip()
 
     return df
 

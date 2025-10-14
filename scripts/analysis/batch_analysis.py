@@ -121,6 +121,61 @@ def identify_underperforming_stores(
     }
 
 
+def get_trip_level_batch_data(
+    nash_df: pd.DataFrame,
+    rate_cards: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Get trip-level batch data for scatter plot visualization.
+    Each trip becomes a point on the chart (batch_size vs CPD).
+
+    Args:
+        nash_df: DataFrame with Nash trip data
+        rate_cards: Rate cards for CPD calculation
+
+    Returns:
+        dict: { batches: [{carrier, batch_size, cpd}, ...] }
+    """
+    from .cpd_analysis import calculate_van_cpd
+    from . import normalize_carrier_name
+
+    ca_df = filter_ca_stores(nash_df.copy())
+
+    if ca_df.empty:
+        return {"batches": []}
+
+    # Normalize carrier names
+    ca_df['Carrier_Normalized'] = ca_df['Carrier'].apply(normalize_carrier_name)
+
+    batches = []
+
+    for _, row in ca_df.iterrows():
+        carrier = row['Carrier_Normalized']
+        batch_size = row.get('Total Orders', 0)
+
+        if pd.isna(batch_size) or batch_size == 0:
+            continue
+
+        # Calculate CPD for this trip
+        vendor_rates = rate_cards.get('vendors', {}).get(carrier)
+        if not vendor_rates:
+            continue
+
+        trip_cpd = calculate_van_cpd(
+            trip_data=row.to_dict(),
+            rate_card=vendor_rates,
+            batch_size=int(batch_size)
+        )
+
+        batches.append({
+            "carrier": carrier,
+            "batch_size": int(batch_size),
+            "cpd": round(trip_cpd, 2)
+        })
+
+    return {"batches": batches}
+
+
 def batch_size_distribution(nash_df: pd.DataFrame) -> Dict[str, Any]:
     """
     Analyze distribution of batch sizes.
@@ -184,30 +239,43 @@ if __name__ == '__main__':
     from . import load_nash_data, PROJECT_ROOT
 
     # Check for CLI arguments
-    if len(sys.argv) >= 3:
-        # CLI mode: python batch_analysis.py <nash_csv> <registry_json>
+    if len(sys.argv) >= 4:
+        # CLI mode: python batch_analysis.py <nash_csv> <registry_json> <rate_cards_json>
         nash_path = sys.argv[1]
         registry_path = sys.argv[2]
+        rates_path = sys.argv[3]
 
         nash_df = load_nash_data(nash_path)
 
         with open(registry_path, 'r') as f:
             store_registry = json.load(f)
 
-        batch_analysis = analyze_batch_density(nash_df, store_registry)
-        print(json.dumps(batch_analysis))
+        with open(rates_path, 'r') as f:
+            rate_cards = json.load(f)
+
+        # Return trip-level data for scatter plot
+        trip_data = get_trip_level_batch_data(nash_df, rate_cards)
+        print(json.dumps(trip_data))
     else:
         # Development mode: use example data
         nash_path = os.path.join(PROJECT_ROOT, 'Data Example', 'data_table_1 (2).csv')
         registry_path = os.path.join(PROJECT_ROOT, 'data', 'ca_store_registry.json')
+        rates_path = os.path.join(PROJECT_ROOT, 'data', 'ca_rate_cards.json')
 
         nash_df = load_nash_data(nash_path)
 
         with open(registry_path, 'r') as f:
             store_registry = json.load(f)
 
-        # Analyze batch density
-        print("Batch Density Analysis:")
+        with open(rates_path, 'r') as f:
+            rate_cards = json.load(f)
+
+        # Show trip-level data for scatter plot
+        print("Trip-level Batch Data (for scatter plot):")
+        trip_data = get_trip_level_batch_data(nash_df, rate_cards)
+        print(json.dumps(trip_data, indent=2))
+
+        print("\nBatch Density Analysis:")
         batch_analysis = analyze_batch_density(nash_df, store_registry)
         print(json.dumps(batch_analysis, indent=2))
 

@@ -132,23 +132,20 @@ export class AnalyticsService {
   }
 
   /**
-   * Analyze batch performance
+   * Analyze batch performance (trip-level data for scatter plot)
    */
   static async analyzeBatches(csvFilePath: string): Promise<Record<string, unknown>> {
-    this.ensureTempDir();
-
-    const storeRegistry = await loadStoreRegistry();
-    const registryPath = path.join(this.tempDir, `registry_${Date.now()}.json`);
-    fs.writeFileSync(registryPath, JSON.stringify(storeRegistry));
+    const { registryPath, rateCardsPath } = await this.createTempFiles();
 
     try {
       const result = await runPythonScript('batch_analysis.py', [
         csvFilePath,
-        registryPath
+        registryPath,
+        rateCardsPath
       ]);
       return result;
     } finally {
-      this.cleanupTempFiles(registryPath);
+      this.cleanupTempFiles(registryPath, rateCardsPath);
     }
   }
 
