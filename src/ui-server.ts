@@ -328,12 +328,27 @@ app.get('/api/analytics/stores', async (_req: Request, res: Response) => {
       });
     }
 
-    // Get all CA stores and analyze each
-    const storeRegistry = await loadStoreRegistry();
-    const stores = Object.keys(storeRegistry.stores);
+    // Get all CA stores from Nash data (read CSV to get unique Store IDs)
+    const csvContent = fs.readFileSync(latestFile, 'utf-8');
+    const lines = csvContent.split('\n');
+    const header = lines[0].split(',');
+    const storeIdIndex = header.indexOf('Store Id');
 
+    // Get unique store IDs from Nash data
+    const storeIds = new Set<string>();
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const columns = line.split(',');
+      const storeId = columns[storeIdIndex];
+      if (storeId) {
+        storeIds.add(storeId.trim());
+      }
+    }
+
+    // Analyze each store found in Nash data
     const results = await Promise.all(
-      stores.map(storeId =>
+      Array.from(storeIds).map(storeId =>
         AnalyticsService.analyzeStore(latestFile, storeId)
       )
     );

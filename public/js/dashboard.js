@@ -168,13 +168,21 @@ async function initTotalOrdersChart() {
         const response = await fetchStoresData();
 
         // Python returns raw JSON: { stores: [...] }
-        if (!response || !response.stores || response.stores.length === 0) {
+        if (!response || !response.stores) {
+            showChartError(chartId, 'No store data available. Please upload Nash data first.');
+            return;
+        }
+
+        // Ensure stores is an array
+        const storesArray = Array.isArray(response.stores) ? response.stores : [];
+
+        if (storesArray.length === 0) {
             showChartError(chartId, 'No store data available. Please upload Nash data first.');
             return;
         }
 
         // Get top 10 stores by total orders
-        const sortedStores = response.stores
+        const sortedStores = storesArray
             .filter(store => store.metrics && store.metrics.has_trips) // Python uses snake_case
             .sort((a, b) => (b.metrics.total_orders || 0) - (a.metrics.total_orders || 0))
             .slice(0, 10);
@@ -264,8 +272,11 @@ async function initCPDChart() {
             return;
         }
 
+        // Ensure stores is an array
+        const storesArray = Array.isArray(response.stores) ? response.stores : [];
+
         // Get top 10 stores by order volume
-        const sortedStores = response.stores
+        const sortedStores = storesArray
             .sort((a, b) => (b.van_orders || 0) - (a.van_orders || 0))
             .slice(0, 10);
 
