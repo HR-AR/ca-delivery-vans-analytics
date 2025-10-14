@@ -9,9 +9,18 @@ export interface UploadResponse {
   message: string;
   filename: string;
   size: number;
+  validationResult?: {
+    totalRows: number;
+    caStores: number;
+    nonCAStoresExcluded: number;
+    carriers: string[];
+    warnings: string[];
+  };
 }
 
 export interface ErrorResponse {
   success: false;
   error: string;
+  validationErrors?: string[];
+  warnings?: string[];
 }

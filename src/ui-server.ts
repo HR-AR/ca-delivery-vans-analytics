@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { upload } from './middleware/upload';
 import { HealthCheckResponse, UploadResponse, ErrorResponse } from './types';
+import { NashValidator } from './utils/nash-validator';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,7 +33,7 @@ app.get('/health', (_req: Request, res: Response<HealthCheckResponse>) => {
 });
 
 // File upload endpoint
-app.post('/api/upload', upload.single('file'), (req: Request, res: Response<UploadResponse | ErrorResponse>) => {
+app.post('/api/upload', upload.single('file'), async (req: Request, res: Response<UploadResponse | ErrorResponse>) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -41,12 +42,38 @@ app.post('/api/upload', upload.single('file'), (req: Request, res: Response<Uplo
       });
     }
 
+    // Validate Nash CSV file
+    const validationResult = await NashValidator.validate(req.file.path);
+
+    // Clean up uploaded file after validation
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (cleanupError) {
+      console.error('File cleanup error:', cleanupError);
+    }
+
+    if (!validationResult.valid) {
+      return res.status(400).json({
+        success: false,
+        error: validationResult.errors.join(', '),
+        validationErrors: validationResult.errors,
+        warnings: validationResult.warnings
+      } as ErrorResponse);
+    }
+
     res.status(200).json({
       success: true,
-      message: 'File uploaded successfully',
+      message: 'File uploaded and validated successfully',
       filename: req.file.originalname,
-      size: req.file.size
-    });
+      size: req.file.size,
+      validationResult: {
+        totalRows: validationResult.stats?.totalRows || 0,
+        caStores: 0, // Will be populated in Phase 2 with CA store registry
+        nonCAStoresExcluded: validationResult.stats?.nonCAStores || 0,
+        carriers: validationResult.stats?.unknownCarriers || [],
+        warnings: validationResult.warnings
+      }
+    } as UploadResponse);
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({
