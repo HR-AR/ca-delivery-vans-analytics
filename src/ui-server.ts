@@ -94,7 +94,7 @@ app.post('/api/upload', upload.single('file'), async (req: Request, res: Respons
         totalRows: totalRows,
         caStores: caStores,
         nonCAStoresExcluded: nonCAStores,
-        carriers: validationResult.stats?.unknownCarriers || [],
+        carriers: validationResult.stats?.discoveredCarriers || [], // Show normalized carriers
         warnings: validationResult.warnings
       }
     } as UploadResponse);

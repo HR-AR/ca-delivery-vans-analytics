@@ -22,7 +22,32 @@ const REQUIRED_COLUMNS = [
   'Delivered Orders',
 ];
 
-const KNOWN_CARRIERS = ['FOX', 'NTG', 'FDC'];
+// Carrier name mapping: full names → acronyms
+const CARRIER_MAPPING: Record<string, string> = {
+  // Standard acronyms
+  'FOX': 'FOX',
+  'NTG': 'NTG',
+  'FDC': 'FDC',
+  // Full names → acronyms
+  'Fox-Drop': 'FOX',
+  'FRONTDoor Collective': 'FDC',
+  'DeliverOL': 'NTG',
+  'JW Logistics': 'JWL', // New CA carrier
+};
+
+// Carriers to EXCLUDE from CA analysis (anomalies)
+const EXCLUDED_CARRIERS = ['Roadie (WMT)', 'Roadie'];
+
+// Accept any carrier attached to CA stores EXCEPT excluded ones
+export function normalizeCarrier(carrier: string): string | null {
+  // Check if excluded
+  if (EXCLUDED_CARRIERS.includes(carrier)) {
+    return null; // Exclude this carrier
+  }
+
+  // Return mapped acronym or original if not in mapping
+  return CARRIER_MAPPING[carrier] || carrier;
+}
 
 // Load CA stores from CSV file (273 stores)
 let CA_STORES: number[] = [];
@@ -60,6 +85,7 @@ export class NashValidator {
     let totalRows = 0;
     let nonCAStores = 0;
     const unknownCarriers = new Set<string>();
+    const discoveredCarriers = new Set<string>(); // Track all carriers found
 
     // Load CA stores list
     const caStores = loadCAStores();
@@ -142,10 +168,20 @@ export class NashValidator {
           );
         }
 
-        // Check for unknown carriers
+        // Normalize carrier name and track carriers
         const carrier = columns[carrierIndex];
-        if (carrier && !KNOWN_CARRIERS.includes(carrier)) {
-          unknownCarriers.add(carrier);
+        if (carrier) {
+          const normalized = normalizeCarrier(carrier);
+          if (normalized === null) {
+            // Carrier is excluded (like Roadie) - only track if on CA store
+            const storeNum = parseInt(columns[storeIdIndex]);
+            if (caStores.includes(storeNum)) {
+              unknownCarriers.add(carrier);
+            }
+          } else {
+            // Track discovered carriers (normalized names)
+            discoveredCarriers.add(normalized);
+          }
         }
       }
 
@@ -159,8 +195,7 @@ export class NashValidator {
 
       if (unknownCarriers.size > 0) {
         warnings.push(
-          `Unknown carriers found: ${Array.from(unknownCarriers).join(', ')}. ` +
-          `Known carriers: ${KNOWN_CARRIERS.join(', ')}`
+          `Excluded carriers: ${Array.from(unknownCarriers).join(', ')}`
         );
       }
 
@@ -171,7 +206,8 @@ export class NashValidator {
         stats: {
           totalRows,
           nonCAStores,
-          unknownCarriers: Array.from(unknownCarriers),
+          unknownCarriers: Array.from(unknownCarriers), // Excluded carriers only
+          discoveredCarriers: Array.from(discoveredCarriers), // All accepted carriers (normalized)
         },
       };
     } catch (error) {
