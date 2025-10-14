@@ -22,9 +22,15 @@ export async function runPythonScript(
     const moduleName = `scripts.analysis.${scriptName.replace('.py', '')}`;
 
     // Run as module: python -m scripts.analysis.dashboard
+    // Add user site-packages to Python path for Render
+    const pythonUserBase = process.env.PYTHONUSERBASE || '/opt/render/project/.python_packages';
     const python = spawn(pythonPath, ['-m', moduleName, ...args], {
       cwd: projectRoot,
-      env: { ...process.env, PYTHONPATH: projectRoot }
+      env: {
+        ...process.env,
+        PYTHONPATH: `${projectRoot}:${pythonUserBase}/lib/python3.11/site-packages:${pythonUserBase}/lib/python3.12/site-packages`,
+        PYTHONUSERBASE: pythonUserBase
+      }
     });
 
     let dataString = '';

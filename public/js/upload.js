@@ -221,7 +221,22 @@ function showSuccess(data) {
     const carriers = validation.carriers || [];
     const warnings = validation.warnings || [];
 
+    // Create prominent warning banner if there are excluded stores
+    const warningBanner = (nonCARows > 0 || warnings.length > 0) ? `
+        <div style="background-color: #ff9800; color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; border: 3px solid #f57c00; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem; display: flex; align-items: center;">
+                <span style="font-size: 2rem; margin-right: 0.5rem;">⚠️</span>
+                IMPORTANT: Data Filtered
+            </h3>
+            <div style="font-size: 1.1rem; line-height: 1.8;">
+                <p style="margin: 0 0 0.5rem 0;"><strong>${nonCARows} non-CA stores were excluded from analysis</strong></p>
+                <p style="margin: 0; opacity: 0.95;">Only <strong>${caStores} California stores</strong> out of <strong>${totalRows} total rows</strong> will be analyzed.</p>
+            </div>
+        </div>
+    ` : '';
+
     const html = `
+        ${warningBanner}
         <div class="alert alert-success">
             <div class="alert-title">✅ UPLOAD SUCCESSFUL</div>
             <div class="alert-content">
@@ -234,7 +249,7 @@ function showSuccess(data) {
                 </div>
                 ${warnings.length > 0 ? `
                 <div class="alert alert-warning" style="margin-top: 1rem; padding: 1rem; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 4px;">
-                    <strong style="color: #856404; font-size: 1.1em;">⚠️ Warnings:</strong>
+                    <strong style="color: #856404; font-size: 1.1em;">⚠️ Additional Warnings:</strong>
                     <ul style="margin: 0.75rem 0 0 1.5rem; color: #856404; line-height: 1.6;">
                         ${warnings.map(w => `<li style="margin-bottom: 0.5rem;"><strong>${w}</strong></li>`).join('')}
                     </ul>
