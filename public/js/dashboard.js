@@ -192,15 +192,12 @@ async function initTotalOrdersChart() {
             return;
         }
 
-        // Prepare datasets for each store
-        const datasets = sortedStores.map((store, index) => ({
-            label: `Store ${store.store_id}`,
-            data: [store.total_orders],
-            borderColor: Object.values(COLORS)[index % Object.values(COLORS).length],
-            backgroundColor: Object.values(COLORS)[index % Object.values(COLORS).length] + '20',
-            tension: 0.4,
-            fill: false
-        }));
+        // Prepare data for bar chart (one bar per store)
+        const labels = sortedStores.map(store => `Store ${store.store_id}`);
+        const data = sortedStores.map(store => store.total_orders || 0);
+        const backgroundColors = sortedStores.map((_, index) =>
+            Object.values(COLORS)[index % Object.values(COLORS).length]
+        );
 
         showChartCanvas(chartId);
         const canvas = document.getElementById(canvasId);
@@ -209,10 +206,16 @@ async function initTotalOrdersChart() {
         if (totalOrdersChart) totalOrdersChart.destroy();
 
         totalOrdersChart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: ['Total Orders'],
-                datasets: datasets
+                labels: labels,
+                datasets: [{
+                    label: 'Total Orders',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors,
+                    borderWidth: 1
+                }]
             },
             options: {
                 responsive: true,
@@ -234,6 +237,12 @@ async function initTotalOrdersChart() {
                     }
                 },
                 scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Store'
+                        }
+                    },
                     y: {
                         beginAtZero: true,
                         title: {
