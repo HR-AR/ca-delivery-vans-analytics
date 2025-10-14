@@ -167,15 +167,16 @@ async function initTotalOrdersChart() {
 
         const response = await fetchStoresData();
 
-        if (!response.success || !response.data || response.data.length === 0) {
+        // Python returns raw JSON: { stores: [...] }
+        if (!response || !response.stores || response.stores.length === 0) {
             showChartError(chartId, 'No store data available. Please upload Nash data first.');
             return;
         }
 
         // Get top 10 stores by total orders
-        const sortedStores = response.data
-            .filter(store => store.metrics.hasTrips)
-            .sort((a, b) => b.metrics.totalOrders - a.metrics.totalOrders)
+        const sortedStores = response.stores
+            .filter(store => store.metrics && store.metrics.has_trips) // Python uses snake_case
+            .sort((a, b) => (b.metrics.total_orders || 0) - (a.metrics.total_orders || 0))
             .slice(0, 10);
 
         if (sortedStores.length === 0) {
@@ -185,8 +186,8 @@ async function initTotalOrdersChart() {
 
         // Prepare datasets for each store
         const datasets = sortedStores.map((store, index) => ({
-            label: `Store ${store.storeId}`,
-            data: [store.metrics.totalOrders],
+            label: `Store ${store.store_id}`, // Python uses snake_case
+            data: [store.metrics.total_orders],
             borderColor: Object.values(COLORS)[index % Object.values(COLORS).length],
             backgroundColor: Object.values(COLORS)[index % Object.values(COLORS).length] + '20',
             tension: 0.4,
@@ -257,19 +258,20 @@ async function initCPDChart() {
 
         const response = await fetchCPDComparisonData();
 
-        if (!response.success || !response.data || response.data.length === 0) {
+        // Python returns raw JSON: { stores: [...] }
+        if (!response || !response.stores || response.stores.length === 0) {
             showChartError(chartId, 'No CPD data available.');
             return;
         }
 
         // Get top 10 stores by order volume
-        const sortedStores = response.data
-            .sort((a, b) => (b.vanOrders || 0) - (a.vanOrders || 0))
+        const sortedStores = response.stores
+            .sort((a, b) => (b.van_orders || 0) - (a.van_orders || 0))
             .slice(0, 10);
 
-        const labels = sortedStores.map(store => `Store ${store.storeId}`);
-        const vanCPD = sortedStores.map(store => store.vanCpd || 0);
-        const sparkCPD = sortedStores.map(store => store.sparkCpd || 0);
+        const labels = sortedStores.map(store => `Store ${store.store_id}`);
+        const vanCPD = sortedStores.map(store => store.van_cpd || 0);
+        const sparkCPD = sortedStores.map(store => store.spark_cpd || 0);
 
         // Color bars based on whether they exceed $5 target
         const vanColors = vanCPD.map(cpd => cpd > 5 ? COLORS.red : COLORS.blue);
@@ -375,15 +377,21 @@ async function initOTDChart() {
 
         const response = await fetchVendorsData();
 
-        if (!response.success || !response.data || response.data.length === 0) {
+        // Python returns raw JSON: { FOX: {...}, NTG: {...}, FDC: {...} }
+        if (!response || Object.keys(response).length === 0) {
             showChartError(chartId, 'No vendor data available.');
             return;
         }
 
-        const vendors = response.data;
+        // Convert object to array
+        const vendors = Object.keys(response).map(carrier => ({
+            carrier: carrier,
+            otd_percentage: response[carrier].otd_percentage || 0
+        }));
+
         const labels = vendors.map(v => v.carrier);
-        const ontimePercentages = vendors.map(v => v.otdPercentage || 0);
-        const latePercentages = vendors.map(v => 100 - (v.otdPercentage || 0));
+        const ontimePercentages = vendors.map(v => v.otd_percentage || 0);
+        const latePercentages = vendors.map(v => 100 - (v.otd_percentage || 0));
 
         showChartCanvas(chartId);
         const canvas = document.getElementById(canvasId);
@@ -469,16 +477,22 @@ async function initVendorChart() {
 
         const response = await fetchVendorsData();
 
-        if (!response.success || !response.data || response.data.length === 0) {
+        // Python returns raw JSON: { FOX: {...}, NTG: {...}, FDC: {...} }
+        if (!response || Object.keys(response).length === 0) {
             showChartError(chartId, 'No vendor data available.');
             return;
         }
 
-        const vendors = response.data;
+        // Convert object to array
+        const vendors = Object.keys(response).map(carrier => ({
+            carrier: carrier,
+            avg_cpd: response[carrier].avg_cpd || 0
+        }));
+
         const labels = vendors.map(v => v.carrier);
 
         // Calculate average CPD as performance metric
-        const avgCPD = vendors.map(v => v.avgCpd || 0);
+        const avgCPD = vendors.map(v => v.avg_cpd || 0);
 
         // Color code based on performance thresholds
         const colors = avgCPD.map(cpd => {
@@ -565,12 +579,13 @@ async function initBatchDensityChart() {
 
         const response = await fetchBatchAnalysisData();
 
-        if (!response.success || !response.data || response.data.length === 0) {
+        // Python returns raw JSON: { batches: [...] }
+        if (!response || !response.batches || response.batches.length === 0) {
             showChartError(chartId, 'No batch data available.');
             return;
         }
 
-        const batches = response.data;
+        const batches = response.batches;
 
         // Group by carrier for different colors
         const carrierData = {};
@@ -580,7 +595,7 @@ async function initBatchDensityChart() {
                 carrierData[carrier] = [];
             }
             carrierData[carrier].push({
-                x: batch.batchSize || 0,
+                x: batch.batch_size || 0,
                 y: batch.cpd || 0
             });
         });
@@ -657,49 +672,50 @@ async function updateHighlights() {
     try {
         const response = await fetchDashboardData();
 
-        if (!response.success || !response.data) {
+        // Python returns raw JSON with snake_case fields
+        if (!response || !response.total_orders) {
             showNoDataMessage();
             return;
         }
 
-        const data = response.data;
+        const data = response; // Use response directly
         const highlights = document.querySelectorAll('.highlight-card');
 
-        // Update Total Orders
+        // Update Total Orders (snake_case from Python)
         if (highlights[0]) {
             highlights[0].querySelector('.highlight-value').textContent =
-                data.totalOrders?.toLocaleString() || '--';
+                data.total_orders?.toLocaleString() || '--';
         }
 
-        // Update Average CPD
+        // Update Average CPD (use avg_van_cpd)
         if (highlights[1]) {
-            const avgCpd = data.averageCpd || 0;
+            const avgCpd = data.avg_van_cpd || 0;
             const cpdColor = avgCpd > 5 ? COLORS.red : avgCpd > 4 ? COLORS.yellow : COLORS.green;
             const valueEl = highlights[1].querySelector('.highlight-value');
             valueEl.textContent = `$${avgCpd.toFixed(2)}`;
             valueEl.style.color = cpdColor;
         }
 
-        // Update OTD %
+        // Update OTD % (snake_case)
         if (highlights[2]) {
-            const otd = data.otdPercentage || 0;
+            const otd = data.otd_percentage || 0;
             const otdColor = otd >= 95 ? COLORS.green : otd >= 90 ? COLORS.yellow : COLORS.red;
             const valueEl = highlights[2].querySelector('.highlight-value');
             valueEl.textContent = `${otd.toFixed(1)}%`;
             valueEl.style.color = otdColor;
         }
 
-        // Update Active Stores
+        // Update Active Stores (active_stores from Python)
         if (highlights[3]) {
             highlights[3].querySelector('.highlight-value').textContent =
-                data.caStoreCount?.toLocaleString() || '--';
+                data.active_stores?.toLocaleString() || '--';
         }
 
         // Update Total Batches (calculate from stores data)
         if (highlights[4]) {
             const storesResponse = await fetchStoresData();
-            const totalBatches = storesResponse.success && storesResponse.data
-                ? storesResponse.data.reduce((sum, store) => sum + (store.metrics.totalBatches || 0), 0)
+            const totalBatches = storesResponse && storesResponse.stores
+                ? storesResponse.stores.reduce((sum, store) => sum + (store.metrics?.total_batches || 0), 0)
                 : 0;
             highlights[4].querySelector('.highlight-value').textContent =
                 totalBatches.toLocaleString();
