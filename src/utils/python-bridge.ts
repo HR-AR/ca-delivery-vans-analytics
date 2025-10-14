@@ -13,8 +13,9 @@ export async function runPythonScript(
   args: string[] = []
 ): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
-    // Use venv Python by default
-    const pythonPath = process.env.PYTHON_PATH || path.join(__dirname, '../../venv/bin/python3');
+    // Use Python from environment or system python3
+    // Render installs packages globally, no venv needed
+    const pythonPath = process.env.PYTHON_PATH || 'python3';
     const projectRoot = path.join(__dirname, '../..');
 
     // Convert 'dashboard.py' to 'scripts.analysis.dashboard' for module execution
