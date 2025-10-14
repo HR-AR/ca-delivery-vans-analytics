@@ -328,32 +328,11 @@ app.get('/api/analytics/stores', async (_req: Request, res: Response) => {
       });
     }
 
-    // Get all CA stores from Nash data (read CSV to get unique Store IDs)
-    const csvContent = fs.readFileSync(latestFile, 'utf-8');
-    const lines = csvContent.split('\n');
-    const header = lines[0].split(',');
-    const storeIdIndex = header.indexOf('Store Id');
+    // Get all stores from Nash data (let Python filter CA stores)
+    // The Python analysis scripts handle CA filtering automatically
+    const result = await AnalyticsService.analyzeAllStores(latestFile);
 
-    // Get unique store IDs from Nash data
-    const storeIds = new Set<string>();
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      const columns = line.split(',');
-      const storeId = columns[storeIdIndex];
-      if (storeId) {
-        storeIds.add(storeId.trim());
-      }
-    }
-
-    // Analyze each store found in Nash data
-    const results = await Promise.all(
-      Array.from(storeIds).map(storeId =>
-        AnalyticsService.analyzeStore(latestFile, storeId)
-      )
-    );
-
-    res.json({ stores: results });
+    res.json(result);
   } catch (error) {
     console.error('Store analytics error:', error);
     res.status(500).json({

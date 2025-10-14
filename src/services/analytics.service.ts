@@ -159,4 +159,22 @@ export class AnalyticsService {
     const result = await runPythonScript('performance.py', [csvFilePath]);
     return result;
   }
+
+  /**
+   * Analyze all stores in Nash CSV (returns array of store metrics)
+   */
+  static async analyzeAllStores(csvFilePath: string): Promise<Record<string, unknown>> {
+    const { registryPath, rateCardsPath } = await this.createTempFiles();
+
+    try {
+      const result = await runPythonScript('all_stores.py', [
+        csvFilePath,
+        registryPath,
+        rateCardsPath
+      ]);
+      return result;
+    } finally {
+      this.cleanupTempFiles(registryPath, rateCardsPath);
+    }
+  }
 }
