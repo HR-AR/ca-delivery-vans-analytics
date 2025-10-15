@@ -55,19 +55,22 @@ def calculate_van_cpd(
 def compare_cpd(
     nash_df: pd.DataFrame,
     store_registry: Dict[str, Any],
-    rate_cards: Dict[str, Any]
+    rate_cards: Dict[str, Any],
+    min_batch_size: int = 10
 ) -> Dict[str, Any]:
     """
-    Compare Van CPD vs Spark CPD for all stores.
+    Compare Van CPD vs Spark CPD for all stores with anomaly exclusion.
 
     Args:
         nash_df: DataFrame with Nash trip data
         store_registry: Store registry with Spark CPD data
         rate_cards: Rate cards for vendors
+        min_batch_size: Minimum batch size to include (default 10, excludes anomalies)
 
     Returns:
         dict: Comparison data with store-level and overall metrics
               stores is an ARRAY of objects (not a dict)
+              Includes exclusion metrics for transparency
     """
     # Filter to CA stores
     ca_df = filter_ca_stores(nash_df.copy())
@@ -79,48 +82,78 @@ def compare_cpd(
                 "avg_van_cpd": 0.0,
                 "avg_spark_cpd": 0.0,
                 "avg_savings": 0.0
+            },
+            "exclusions": {
+                "total_excluded": 0,
+                "excluded_trips": []
             }
         }
 
     # Normalize carrier names
     ca_df['Carrier_Normalized'] = ca_df['Carrier'].apply(normalize_carrier_name)
 
+    # Track exclusions
+    excluded_trips = []
+    total_excluded = 0
+
     # Calculate CPD for each store
     store_cpd_list = []
-    all_van_cpd = []
+    all_van_cpd_weighted = []
     all_spark_cpd = []
+    all_orders = []
 
     for store_id in ca_df['Store Id'].unique():
         store_df = ca_df[ca_df['Store Id'] == store_id]
 
-        # Calculate Van CPD for this store
-        van_cpd_values = []
-        total_van_orders = 0
+        # Calculate Van CPD for this store using WEIGHTED AVERAGE
+        total_cost = 0.0
+        total_orders = 0
+        included_trips = 0
+        excluded_for_store = 0
 
         for _, row in store_df.iterrows():
             carrier = row['Carrier_Normalized']
-            total_orders = row['Total Orders']
+            batch_size = row['Total Orders']
 
-            if pd.isna(total_orders) or total_orders == 0:
+            if pd.isna(batch_size) or batch_size == 0:
                 continue
 
-            total_van_orders += int(total_orders)
+            # ANOMALY EXCLUSION: Skip batches smaller than threshold
+            if batch_size < min_batch_size:
+                excluded_trips.append({
+                    "store_id": str(store_id),
+                    "date": str(row.get('Date', 'N/A')),
+                    "carrier": carrier,
+                    "batch_size": int(batch_size),
+                    "reason": f"Batch size < {min_batch_size} orders"
+                })
+                total_excluded += 1
+                excluded_for_store += 1
+                continue
 
             vendor_rates = rate_cards.get('vendors', {}).get(carrier)
             if not vendor_rates:
                 continue
 
-            trip_cpd = calculate_van_cpd(
-                trip_data=row.to_dict(),
-                rate_card=vendor_rates,
-                batch_size=int(total_orders)
-            )
-            van_cpd_values.append(trip_cpd)
+            # Calculate trip cost (not CPD yet)
+            batch_size_int = int(batch_size)
+            if batch_size_int <= 80:
+                base_rate = vendor_rates.get('base_rate_80', 0)
+            else:
+                base_rate = vendor_rates.get('base_rate_100', 0)
 
-        if not van_cpd_values:
+            adjustment = vendor_rates.get('contractual_adjustment', 1.0)
+            trip_cost = base_rate * adjustment
+
+            total_cost += trip_cost
+            total_orders += batch_size_int
+            included_trips += 1
+
+        if total_orders == 0:
             continue
 
-        avg_van_cpd = sum(van_cpd_values) / len(van_cpd_values)
+        # WEIGHTED AVERAGE CPD = total cost / total orders
+        avg_van_cpd = total_cost / total_orders
 
         # Get Spark CPD from store registry
         store_data = store_registry.get('stores', {}).get(str(store_id), {})
@@ -137,22 +170,35 @@ def compare_cpd(
             "spark_cpd": round(spark_cpd, 2),
             "savings": round(savings, 2),
             "savings_percentage": round(savings_percentage, 1),
-            "van_orders": total_van_orders
+            "van_orders": total_orders,
+            "included_trips": included_trips,
+            "excluded_trips": excluded_for_store
         })
 
-        all_van_cpd.append(avg_van_cpd)
+        all_van_cpd_weighted.append(avg_van_cpd)
         all_spark_cpd.append(spark_cpd)
+        all_orders.append(total_orders)
 
-    # Calculate overall averages
+    # Calculate overall averages (weighted by order volume)
+    if sum(all_orders) > 0:
+        overall_van_cpd = sum(cpd * orders for cpd, orders in zip(all_van_cpd_weighted, all_orders)) / sum(all_orders)
+    else:
+        overall_van_cpd = 0.0
+
     overall = {
-        "avg_van_cpd": round(sum(all_van_cpd) / len(all_van_cpd), 2) if all_van_cpd else 0.0,
+        "avg_van_cpd": round(overall_van_cpd, 2),
         "avg_spark_cpd": round(sum(all_spark_cpd) / len(all_spark_cpd), 2) if all_spark_cpd else 0.0,
     }
     overall["avg_savings"] = round(overall["avg_spark_cpd"] - overall["avg_van_cpd"], 2)
 
     return {
         "stores": store_cpd_list,
-        "overall": overall
+        "overall": overall,
+        "exclusions": {
+            "total_excluded": total_excluded,
+            "min_batch_size": min_batch_size,
+            "excluded_trips": excluded_trips
+        }
     }
 
 

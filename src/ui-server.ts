@@ -458,6 +458,29 @@ app.get('/api/analytics/performance', async (_req: Request, res: Response) => {
   }
 });
 
+// GET /api/analytics/weekly-metrics - Week-over-week metrics analysis
+app.get('/api/analytics/weekly-metrics', async (_req: Request, res: Response) => {
+  try {
+    const latestFile = getLatestNashFile();
+
+    if (!latestFile) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Nash data available. Please upload a CSV file first.'
+      });
+    }
+
+    const result = await AnalyticsService.analyzeWeeklyMetrics(latestFile);
+    res.json(result);
+  } catch (error) {
+    console.error('Weekly metrics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Weekly metrics calculation failed'
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: express.NextFunction) => {
   console.error('Error:', err);

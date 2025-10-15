@@ -174,4 +174,21 @@ export class AnalyticsService {
       this.cleanupTempFiles(registryPath, rateCardsPath);
     }
   }
+
+  /**
+   * Analyze week-over-week metrics with anomaly exclusion
+   */
+  static async analyzeWeeklyMetrics(csvFilePath: string): Promise<Record<string, unknown>> {
+    const { registryPath, rateCardsPath } = await this.createTempFiles();
+
+    try {
+      const result = await runPythonScript('weekly_metrics.py', [
+        csvFilePath,
+        rateCardsPath
+      ]);
+      return result;
+    } finally {
+      this.cleanupTempFiles(registryPath, rateCardsPath);
+    }
+  }
 }

@@ -9,3 +9,4 @@ uploads/
 data/*.json
 data/*.backup-*
 data/*.bak
+__pycache__/

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA Delivery Vans Analytics - Weekly Metrics</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <h1>CA Delivery Vans Analytics</h1>
+                <p class="header-subtitle">Weekly Metrics - Week-over-Week Analysis</p>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Upload</a>
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="weekly-metrics.html" class="nav-link active">Weekly Metrics</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Summary Card -->
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>Weekly Metrics Summary</div>
+                    <button id="exportCsvBtn" class="btn btn-primary">
+                        Export to CSV
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="highlights-grid" id="summaryGrid">
+                    <div class="highlight-card">
+                        <div class="highlight-value" id="totalWeeks">--</div>
+                        <div class="highlight-label">Total Weeks</div>
+                    </div>
+                    <div class="highlight-card">
+                        <div class="highlight-value" id="dateRange">--</div>
+                        <div class="highlight-label">Date Range</div>
+                    </div>
+                    <div class="highlight-card">
+                        <div class="highlight-value" id="minBatchSize">--</div>
+                        <div class="highlight-label">Min Batch Size (Anomaly Threshold)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Metrics Table -->
+        <div class="card">
+            <div class="card-header">Overall Metrics by Week</div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="data-table" id="overallMetricsTable">
+                        <thead>
+                            <tr>
+                                <th>Week Start</th>
+                                <th>Week End</th>
+                                <th>Total Orders</th>
+                                <th>Total Trips</th>
+                                <th>Total Batches</th>
+                                <th>Avg CPD</th>
+                                <th>Active Stores</th>
+                                <th>Excluded Trips</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overallMetricsBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 20px;">
+                                    <div class="loading-spinner-small" style="display: inline-block;"></div>
+                                    <span style="margin-left: 10px; color: #6b7280;">Loading weekly metrics...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Store-Level Metrics Table -->
+        <div class="card">
+            <div class="card-header">Store Performance by Week</div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="data-table" id="storeMetricsTable">
+                        <thead>
+                            <tr>
+                                <th>Week Start</th>
+                                <th>Store ID</th>
+                                <th>Orders</th>
+                                <th>Trips</th>
+                                <th>CPD</th>
+                            </tr>
+                        </thead>
+                        <tbody id="storeMetricsBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 20px;">
+                                    <div class="loading-spinner-small" style="display: inline-block;"></div>
+                                    <span style="margin-left: 10px; color: #6b7280;">Loading store metrics...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carrier-Level Metrics Table -->
+        <div class="card">
+            <div class="card-header">Carrier Performance by Week</div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="data-table" id="carrierMetricsTable">
+                        <thead>
+                            <tr>
+                                <th>Week Start</th>
+                                <th>Carrier</th>
+                                <th>Orders</th>
+                                <th>Trips</th>
+                                <th>CPD</th>
+                            </tr>
+                        </thead>
+                        <tbody id="carrierMetricsBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 20px;">
+                                    <div class="loading-spinner-small" style="display: inline-block;"></div>
+                                    <span style="margin-left: 10px; color: #6b7280;">Loading carrier metrics...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exclusions Table -->
+        <div class="card">
+            <div class="card-header">Excluded Trips (Anomalies)</div>
+            <div class="card-body">
+                <p style="color: #6b7280; margin-bottom: 15px;">
+                    Trips excluded from CPD calculations due to batch size below minimum threshold.
+                </p>
+                <div class="table-container">
+                    <table class="data-table" id="exclusionsTable">
+                        <thead>
+                            <tr>
+                                <th>Week Start</th>
+                                <th>Store ID</th>
+                                <th>Date</th>
+                                <th>Carrier</th>
+                                <th>Batch Size</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exclusionsBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 20px;">
+                                    <div class="loading-spinner-small" style="display: inline-block;"></div>
+                                    <span style="margin-left: 10px; color: #6b7280;">Loading exclusions...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Error</h2>
+            <p id="errorMessage"></p>
+            <button onclick="closeErrorModal()" class="btn btn-primary">Close</button>
+        </div>
+    </div>
+
+    <script src="js/weekly-metrics.js"></script>
+</body>
+</html>
