@@ -86,25 +86,38 @@ def calculate_dashboard_metrics(
     }
 
 
-def _calculate_avg_van_cpd(df: pd.DataFrame, rate_cards: Dict[str, Any]) -> float:
+def _calculate_avg_van_cpd(df: pd.DataFrame, rate_cards: Dict[str, Any], min_batch_size: int = 10) -> float:
     """
-    Calculate average Van CPD across all trips.
+    Calculate average Van CPD across all trips using weighted average.
+
+    Weighted average: total_cost / total_orders
+    This is more accurate than simple average because it accounts for batch size differences.
+
+    Excludes anomalies (batches < min_batch_size) to prevent skewed metrics.
 
     Args:
         df: Filtered DataFrame with Nash data
         rate_cards: Rate card data
+        min_batch_size: Minimum batch size to include (default 10)
 
     Returns:
-        float: Average Van CPD
+        float: Average Van CPD (weighted, with anomaly exclusion)
     """
-    cpd_values = []
+    total_cost = 0.0
+    total_orders = 0
 
     for _, row in df.iterrows():
         carrier = normalize_carrier_name(row['Carrier'])
-        total_orders = row['Total Orders']
+        batch_size = row['Total Orders']
 
         # Skip if no orders
-        if pd.isna(total_orders) or total_orders == 0:
+        if pd.isna(batch_size) or batch_size == 0:
+            continue
+
+        batch_size_int = int(batch_size)
+
+        # Exclude anomalies (small batches)
+        if batch_size_int < min_batch_size:
             continue
 
         # Get rate card for carrier
@@ -113,7 +126,7 @@ def _calculate_avg_van_cpd(df: pd.DataFrame, rate_cards: Dict[str, Any]) -> floa
             continue
 
         # Determine which base rate to use based on batch size
-        if total_orders <= 80:
+        if batch_size_int <= 80:
             base_rate = vendor_rates.get('base_rate_80', 0)
         else:
             base_rate = vendor_rates.get('base_rate_100', 0)
@@ -122,14 +135,14 @@ def _calculate_avg_van_cpd(df: pd.DataFrame, rate_cards: Dict[str, Any]) -> floa
         adjustment = vendor_rates.get('contractual_adjustment', 1.0)
         trip_cost = base_rate * adjustment
 
-        # Calculate CPD for this trip
-        cpd = trip_cost / total_orders
-        cpd_values.append(cpd)
+        # Accumulate totals
+        total_cost += trip_cost
+        total_orders += batch_size_int
 
-    if not cpd_values:
+    if total_orders == 0:
         return 0.0
 
-    return sum(cpd_values) / len(cpd_values)
+    return total_cost / total_orders
 
 
 def _calculate_avg_spark_cpd(df: pd.DataFrame, store_registry: Dict[str, Any]) -> float:
