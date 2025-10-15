@@ -73,6 +73,164 @@
         <!-- Results Container -->
         <div id="resultsContainer"></div>
 
+        <!-- How-To Guide Card -->
+        <div class="card" style="border-left: 4px solid #3b82f6;">
+            <div class="card-header" style="background: linear-gradient(to right, #eff6ff, #ffffff);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">📖</span>
+                    <span style="font-weight: 600; color: #1e40af;">Quick Start Guide</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Step 1: Get Data from Nash -->
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <div style="background: #3b82f6; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">1</div>
+                        <h3 style="margin: 0; color: #1e40af; font-size: 18px;">Download Data from Nash Portal</h3>
+                    </div>
+                    <div style="margin-left: 38px;">
+                        <p style="color: #4b5563; margin-bottom: 12px;">Get your delivery data from the Nash analytics portal:</p>
+                        <ol style="color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <li>Go to <a href="https://portal.usenash.com/analytics" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 500;">https://portal.usenash.com/analytics</a></li>
+                            <li>Log in with your Nash credentials</li>
+                            <li>Select your date range (e.g., last week, last month)</li>
+                            <li>Click <strong>"Export to CSV"</strong> or <strong>"Download Report"</strong></li>
+                            <li>Save the CSV file to your computer</li>
+                        </ol>
+                        <div style="background: #fef3c7; border-left: 3px solid #f59e0b; padding: 12px; margin-top: 12px; border-radius: 4px;">
+                            <div style="display: flex; gap: 8px;">
+                                <span style="color: #f59e0b;">⚠️</span>
+                                <div style="color: #92400e; font-size: 14px;">
+                                    <strong>Important:</strong> Make sure the CSV includes all required columns (Date, Store Id, Carrier, Total Orders, etc.). If columns are missing, contact Nash support.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Upload Data -->
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <div style="background: #3b82f6; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">2</div>
+                        <h3 style="margin: 0; color: #1e40af; font-size: 18px;">Upload to Analytics Dashboard</h3>
+                    </div>
+                    <div style="margin-left: 38px;">
+                        <p style="color: #4b5563; margin-bottom: 12px;">Upload your Nash CSV file using the upload box above:</p>
+                        <ol style="color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <li>Click the upload zone or drag and drop your CSV file</li>
+                            <li>Click <strong>"Upload File"</strong> button</li>
+                            <li>Wait for validation to complete (usually 5-10 seconds)</li>
+                            <li>Review the upload summary (total orders, stores, carriers)</li>
+                            <li>Click <strong>"Dashboard"</strong> in the navigation to view your analytics</li>
+                        </ol>
+                        <div style="background: #dbeafe; border-left: 3px solid #3b82f6; padding: 12px; margin-top: 12px; border-radius: 4px;">
+                            <div style="display: flex; gap: 8px;">
+                                <span style="color: #3b82f6;">💡</span>
+                                <div style="color: #1e40af; font-size: 14px;">
+                                    <strong>Tip:</strong> Only California stores (2082, 2242, 5930, etc.) are analyzed. Non-CA stores are automatically filtered out and won't affect your metrics.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Add Comparison Data (Optional) -->
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <div style="background: #10b981; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">3</div>
+                        <h3 style="margin: 0; color: #059669; font-size: 18px;">Add Spark CPD & Van OTD Data (Optional)</h3>
+                    </div>
+                    <div style="margin-left: 38px;">
+                        <p style="color: #4b5563; margin-bottom: 12px;">For enhanced reporting, add comparison metrics in the Admin page:</p>
+
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #374151; font-size: 15px; margin-bottom: 8px;">📊 Spark CPD (Cost Per Delivery)</h4>
+                            <ol style="color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.8;">
+                                <li>Navigate to <strong>Admin</strong> page (top navigation)</li>
+                                <li>Find the <strong>"Spark CPD Bulk Upload"</strong> section</li>
+                                <li>Create a CSV with columns: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 13px;">Store ID, Spark YTD CPD, Target Batch Size</code></li>
+                                <li>Example:
+                                    <pre style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; border-radius: 4px; font-size: 13px; margin-top: 8px; overflow-x: auto;">Store ID,Spark YTD CPD,Target Batch Size
+5930,5.70,80
+2082,5.50,80
+2242,5.85,80</pre>
+                                </li>
+                                <li>Upload the file and verify success</li>
+                                <li>Dashboard will now show <strong>Van CPD vs Spark CPD</strong> comparison</li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            <h4 style="color: #374151; font-size: 15px; margin-bottom: 8px;">📈 Van OTD % (On-Time Delivery)</h4>
+                            <ol style="color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.8;">
+                                <li>Navigate to <strong>Admin</strong> page</li>
+                                <li>Find the <strong>"Van OTD Bulk Upload"</strong> section (coming soon)</li>
+                                <li>Create a CSV with columns: <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 13px;">Store ID, Van OTD %</code></li>
+                                <li>Example:
+                                    <pre style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; border-radius: 4px; font-size: 13px; margin-top: 8px; overflow-x: auto;">Store ID,Van OTD %
+5930,95.5
+2082,92.3
+2242,98.1</pre>
+                                </li>
+                                <li>Upload the file and verify success</li>
+                                <li>Dashboard will display <strong>Van OTD %</strong> in KPIs</li>
+                            </ol>
+                        </div>
+
+                        <div style="background: #d1fae5; border-left: 3px solid #10b981; padding: 12px; margin-top: 12px; border-radius: 4px;">
+                            <div style="display: flex; gap: 8px;">
+                                <span style="color: #10b981;">✓</span>
+                                <div style="color: #065f46; font-size: 14px;">
+                                    <strong>Why add this data?</strong> Comparing Van CPD to Spark CPD helps identify cost savings opportunities. Van OTD tracking helps monitor service quality.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: View Reports -->
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <div style="background: #3b82f6; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">4</div>
+                        <h3 style="margin: 0; color: #1e40af; font-size: 18px;">View Your Analytics</h3>
+                    </div>
+                    <div style="margin-left: 38px;">
+                        <p style="color: #4b5563; margin-bottom: 12px;">Explore your delivery performance data:</p>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 6px;">
+                                <div style="font-weight: 600; color: #374151; margin-bottom: 6px;">📊 Dashboard</div>
+                                <div style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+                                    View KPIs (total orders, CPD, trips, stores) and 5 interactive charts showing performance by store, carrier, and batch size.
+                                </div>
+                            </div>
+                            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 6px;">
+                                <div style="font-weight: 600; color: #374151; margin-bottom: 6px;">📅 Weekly Metrics</div>
+                                <div style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+                                    Week-over-week analysis with detailed tables. Export to CSV for further analysis in Excel or reporting tools.
+                                </div>
+                            </div>
+                            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 6px;">
+                                <div style="font-weight: 600; color: #374151; margin-bottom: 6px;">⚙️ Admin</div>
+                                <div style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+                                    Manage store data, upload Spark CPD, adjust rate cards, and configure individual store settings.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Need Help Section -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 30px;">
+                    <div style="font-weight: 600; color: #334155; margin-bottom: 10px; font-size: 16px;">❓ Need Help?</div>
+                    <div style="color: #64748b; font-size: 14px; line-height: 1.7;">
+                        <strong>Can't find your Nash CSV?</strong> Contact your Nash account manager or visit the Nash portal support.<br>
+                        <strong>Upload errors?</strong> Check that your CSV has all required columns (Date, Store Id, Carrier, Total Orders).<br>
+                        <strong>Questions about metrics?</strong> Reach out to your ops team or refer to the dashboard tooltips for metric definitions.
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Instructions Card -->
         <div class="card">
             <div class="card-header">Required CSV Format</div>
