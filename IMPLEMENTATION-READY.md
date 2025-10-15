@@ -1659,3 +1659,392 @@ showChartCanvas(chartId, canvasId);
 ---
 
 **Last Updated**: 2025-10-14 (Phase 4.11 COMPLETE - Chart Visibility Fixed + Canvas ID Case Sensitivity - 46 COE Lessons Documented)
+
+## Phase 4.12: Week-over-Week Metrics with CSV Export (2025-10-14)
+
+### **User Request**:
+"I love the visualizations. Is there anyway that you could almost have a table view of all the metrics called out by week over week for the CA stores? Perfect and for the week over week. All of the above. It should be able to be pulled out by .CSV as well."
+
+### **Requirements**:
+1. Week-over-week metrics table showing ALL metrics by week
+2. Anomaly exclusion (< 10 orders threshold)
+3. Weighted average CPD calculation
+4. Track and report all exclusions (with reasons)
+5. CSV export functionality
+6. Include: orders, trips, CPD, stores, carriers by week
+
+### **Implementation Summary**:
+
+#### **Backend Changes**:
+
+**1. Enhanced CPD Calculation** (`scripts/analysis/cpd_analysis.py`)
+- Added `min_batch_size` parameter (default 10) for anomaly exclusion
+- Changed from simple average to **weighted average CPD**: `total_cost / total_orders`
+- Track excluded trips with store_id, date, carrier, batch_size, reason
+- Return exclusion metrics in API response
+
+**2. New Weekly Metrics Module** (`scripts/analysis/weekly_metrics.py`)
+- `get_week_start()`: Find Monday of any week
+- `analyze_weekly_metrics()`: Main analysis function
+- Groups data by week (Monday to Sunday)
+- Calculates per week: orders, trips, batches, CPD, stores, carriers, exclusions
+
+**3. API Endpoint** (`src/ui-server.ts`)
+- Added `GET /api/analytics/weekly-metrics`
+
+**4. Analytics Service** (`src/services/analytics.service.ts`)
+- Added `analyzeWeeklyMetrics()` method
+
+#### **Frontend Changes**:
+
+**1. Weekly Metrics Page** (`public/weekly-metrics.html`)
+- Summary section with total weeks, date range, min batch threshold
+- Overall Metrics Table (by week)
+- Store Performance Table (by week)
+- Carrier Performance Table (by week)
+- Exclusions Table
+- Export to CSV button
+
+**2. JavaScript** (`public/js/weekly-metrics.js`)
+- Fetches `/api/analytics/weekly-metrics`
+- Renders 4 tables dynamically
+- CSV export with filename `weekly_metrics_YYYY-MM-DD.csv`
+
+**3. Navigation Updates**
+- Added "Weekly Metrics" link to all pages
+
+### **Files Changed**:
+- `scripts/analysis/cpd_analysis.py`
+- `scripts/analysis/weekly_metrics.py` (NEW)
+- `src/ui-server.ts`
+- `src/services/analytics.service.ts`
+- `public/weekly-metrics.html` (NEW)
+- `public/js/weekly-metrics.js` (NEW)
+- `public/index.html`, `public/dashboard.html`, `public/admin.html`
+- `.gitignore`
+
+---
+
+## Phase 4.13: Dashboard CPD Fix - Weighted Average + Anomaly Exclusion (2025-10-14)
+
+### **User Report**:
+"Can we adjust the average CPD? That's not matching the blended CPD on the other dashboard"
+- Dashboard: $12.59 CPD
+- Weekly Metrics: $5.92-$6.18 CPD
+
+### **Root Cause**:
+
+**Dashboard (BEFORE):**
+- Simple average: `sum(cpd_per_trip) / count(trips)`
+- NO anomaly exclusion
+- Result: $12.59 (skewed by 2-order batch anomaly)
+
+**Weekly Metrics (CORRECT):**
+- Weighted average: `total_cost / total_orders`
+- WITH anomaly exclusion (< 10 orders)
+- Result: $5.92-$6.18 (accurate)
+
+### **The Fix**:
+
+Updated `scripts/analysis/dashboard.py` - `_calculate_avg_van_cpd()`:
+- Added `min_batch_size` parameter (default 10)
+- Added anomaly exclusion logic: `if batch_size < 10: continue`
+- Changed to weighted average: `total_cost / total_orders`
+
+### **Impact**:
+- Dashboard CPD will drop from $12.59 to ~$5.92-$6.18
+- Both pages now use identical calculation
+- Anomalies excluded from both views
+
+### **Files Changed**:
+- `scripts/analysis/dashboard.py`
+
+---
+
+## Phase 4.14: Van OTD Bulk Upload Feature (PLANNED)
+
+### **User Request**:
+"I want to be able to add OTD as a metric, but I want to be able to add Van OTD by Store number via upload like Spark CPD via Upload and have it reflect in the dashboard."
+
+### **Requirements**:
+1. CSV bulk upload similar to Spark CPD workflow
+2. Store registry persistence for Van OTD per store
+3. Dashboard display of Van OTD metric
+4. Admin UI for bulk upload + individual editing
+5. Data validation (store IDs, OTD 0-100%)
+
+### **Implementation Plan**:
+
+#### **Phase 4.14.1: Backend - Store Registry Schema Update**
+
+**Update `data/ca_store_registry.json`:**
+```json
+{
+  "stores": {
+    "5930": {
+      "spark_cpd": 5.70,
+      "target_batch_size": 80,
+      "van_otd": 95.5,  // NEW
+      "last_updated": "2025-10-14T12:00:00Z"
+    }
+  },
+  "version": "1.1"
+}
+```
+
+**Update `src/utils/data-store.ts`:**
+```typescript
+export async function bulkUploadVanOTD(
+  stores: Array<{ storeId: string; vanOTD: number }>
+): Promise<{ success: boolean; updated: number; errors: string[] }> {
+  // Validate OTD 0-100
+  // Update store registry
+  // Return results
+}
+
+export async function updateStore(storeId: string, updates: {
+  spark_cpd?: number;
+  target_batch_size?: number;
+  van_otd?: number;  // NEW
+}): Promise<void> {
+  // Validate van_otd 0-100
+  // Update store in registry
+}
+```
+
+**Update `src/ui-server.ts`:**
+```typescript
+// POST /api/stores/registry/bulk-van-otd
+app.post('/api/stores/registry/bulk-van-otd', async (req, res) => {
+  const { stores } = req.body;
+  const result = await bulkUploadVanOTD(stores);
+  res.json(result);
+});
+```
+
+#### **Phase 4.14.2: Backend - Dashboard Metrics Integration**
+
+**Update `scripts/analysis/dashboard.py`:**
+```python
+def _calculate_avg_van_otd(df: pd.DataFrame, store_registry: Dict[str, Any]) -> float:
+    """Calculate weighted average Van OTD from registry."""
+    stores = store_registry.get('stores', {})
+    store_orders = df.groupby('Store Id')['Total Orders'].sum().to_dict()
+    
+    total_weighted_otd = 0.0
+    total_orders = 0
+    
+    for store_id, order_count in store_orders.items():
+        store_data = stores.get(str(store_id))
+        if store_data and 'van_otd' in store_data:
+            van_otd = store_data['van_otd']
+            total_weighted_otd += van_otd * order_count
+            total_orders += order_count
+    
+    return total_weighted_otd / total_orders if total_orders > 0 else 0.0
+
+def calculate_dashboard_metrics(...):
+    avg_van_otd = _calculate_avg_van_otd(ca_df, store_registry)
+    return {
+        ...,
+        "avg_van_otd": round(avg_van_otd, 2)  // NEW
+    }
+```
+
+#### **Phase 4.14.3: Frontend - Admin Page Bulk Upload UI**
+
+**Update `public/admin.html`:**
+```html
+<!-- Van OTD Bulk Upload Section -->
+<div class="admin-section">
+    <h2>Van OTD Bulk Upload</h2>
+    <p>Upload CSV: <strong>Store ID, Van OTD %</strong></p>
+    
+    <div class="info-box">
+        <h4>CSV Format:</h4>
+        <pre>Store ID,Van OTD %
+5930,95.5
+2082,92.3</pre>
+    </div>
+    
+    <input type="file" id="vanOtdFileInput" accept=".csv" />
+    <button id="vanOtdUploadBtn">Upload Van OTD Data</button>
+    
+    <div id="vanOtdUploadResult" class="hidden">...</div>
+    <div id="vanOtdUploadError" class="hidden">...</div>
+</div>
+```
+
+**Update `public/js/admin.js`:**
+```javascript
+document.getElementById('vanOtdUploadBtn').addEventListener('click', async () => {
+    const file = document.getElementById('vanOtdFileInput').files[0];
+    const text = await file.text();
+    const stores = parseCSV(text);  // Parse and validate
+    
+    const response = await fetch('/api/stores/registry/bulk-van-otd', {
+        method: 'POST',
+        body: JSON.stringify({ stores })
+    });
+    
+    // Display results
+});
+```
+
+#### **Phase 4.14.4: Frontend - Dashboard Display**
+
+**Update `public/dashboard.html`:**
+```html
+<div class="highlight-card">
+    <div class="highlight-value">--</div>
+    <div class="highlight-label">Van OTD %</div>
+</div>
+```
+
+**Update `public/js/dashboard.js`:**
+```javascript
+function renderHighlights(data) {
+    // Add Van OTD card
+    `<div class="highlight-value">${data.avg_van_otd || '--'}%</div>`
+}
+```
+
+#### **Phase 4.14.5: Frontend - Store Editor Individual Update**
+
+**Update `public/admin.html`:**
+```html
+<div class="form-group">
+    <label>Van OTD %:</label>
+    <input type="number" id="editVanOTD" min="0" max="100" step="0.1" />
+</div>
+```
+
+**Update `public/js/admin.js`:**
+```javascript
+async function saveStoreUpdates() {
+    const updates = {
+        van_otd: parseFloat(document.getElementById('editVanOTD').value)
+    };
+    // Validate 0-100
+    // PUT /api/stores/:storeId
+}
+```
+
+### **CSV Format Specification**:
+```csv
+Store ID,Van OTD %
+5930,95.5
+2082,92.3
+2242,98.1
+```
+
+**Validation:**
+- Store ID: Non-empty string
+- Van OTD %: 0 ≤ value ≤ 100
+
+### **API Specification**:
+
+**POST /api/stores/registry/bulk-van-otd**
+
+Request:
+```json
+{
+  "stores": [
+    { "storeId": "5930", "vanOTD": 95.5 },
+    { "storeId": "2082", "vanOTD": 92.3 }
+  ]
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "updated": 2,
+  "errors": []
+}
+```
+
+### **Implementation Checklist**:
+
+#### **Phase 4.14.1: Backend - Store Registry**
+- [ ] Update `ca_store_registry.json` schema (add `van_otd`)
+- [ ] Add `bulkUploadVanOTD()` to `data-store.ts`
+- [ ] Update `updateStore()` to handle `van_otd`
+- [ ] Add validation (0-100)
+- [ ] Add `/api/stores/registry/bulk-van-otd` endpoint
+- [ ] Test bulk upload API
+
+#### **Phase 4.14.2: Backend - Dashboard Metrics**
+- [ ] Add `_calculate_avg_van_otd()` to `dashboard.py`
+- [ ] Update `calculate_dashboard_metrics()` return
+- [ ] Use weighted average by order volume
+- [ ] Handle missing data gracefully
+- [ ] Test with sample data
+
+#### **Phase 4.14.3: Frontend - Admin Bulk Upload**
+- [ ] Add Van OTD section to `admin.html`
+- [ ] Add CSV format instructions
+- [ ] Create upload UI elements
+- [ ] Implement upload handler in `admin.js`
+- [ ] Parse and validate CSV
+- [ ] Display success/error results
+
+#### **Phase 4.14.4: Frontend - Dashboard Display**
+- [ ] Add Van OTD KPI card to `dashboard.html`
+- [ ] Update `renderHighlights()` in `dashboard.js`
+- [ ] Display percentage or '--' if unavailable
+
+#### **Phase 4.14.5: Frontend - Store Editor**
+- [ ] Add Van OTD field to store editor
+- [ ] Update load/save functions
+- [ ] Add validation (0-100)
+
+#### **Phase 4.14.6: Testing & Validation**
+- [ ] Test CSV bulk upload (valid/invalid data)
+- [ ] Test dashboard displays correct average
+- [ ] Test weighted average calculation
+- [ ] Test store editor updates
+- [ ] Test persistence
+
+#### **Phase 4.14.7: Documentation**
+- [ ] Update README with Van OTD feature
+- [ ] Document CSV format
+- [ ] Add API documentation
+
+### **Files to Create/Modify**:
+
+**Backend:**
+- `src/utils/data-store.ts` - Add `bulkUploadVanOTD()`
+- `src/ui-server.ts` - Add bulk endpoint
+- `scripts/analysis/dashboard.py` - Add `_calculate_avg_van_otd()`
+- `data/ca_store_registry.json` - Update schema
+
+**Frontend:**
+- `public/admin.html` - Add Van OTD upload section
+- `public/js/admin.js` - Add upload handlers
+- `public/dashboard.html` - Add Van OTD KPI card
+- `public/js/dashboard.js` - Update KPI rendering
+
+### **Estimated Timeline**:
+- Phase 4.14.1: 1 hour (Backend - Store Registry)
+- Phase 4.14.2: 30 minutes (Backend - Dashboard)
+- Phase 4.14.3: 1 hour (Frontend - Admin Upload)
+- Phase 4.14.4: 30 minutes (Frontend - Dashboard)
+- Phase 4.14.5: 30 minutes (Frontend - Editor)
+- Phase 4.14.6: 1 hour (Testing)
+- Phase 4.14.7: 30 minutes (Documentation)
+- **Total: ~5 hours**
+
+### **Success Criteria**:
+- ✅ User can upload Van OTD CSV via Admin
+- ✅ Van OTD persists in store registry
+- ✅ Dashboard displays weighted average Van OTD %
+- ✅ Individual store Van OTD editable
+- ✅ Validation prevents invalid percentages
+- ✅ Missing data handled gracefully
+
+---
+
+**Last Updated**: 2025-10-14 (Phases 4.12, 4.13 COMPLETE + Phase 4.14 PLANNED - 46 COE Lessons Documented)
+
