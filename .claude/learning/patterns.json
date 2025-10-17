@@ -1,0 +1,43 @@
+{
+  "patterns": [
+    {
+      "signature": "analysis-weekly-metrics",
+      "intent": "analysis",
+      "count": 3,
+      "first_seen": "2025-10-17T00:00:00",
+      "last_seen": "2025-10-17T00:00:00",
+      "examples": [
+        {
+          "request": "Analyze this week's metrics and check for anomalies",
+          "instructions": "Load Nash data, calculate CPD with anomaly exclusion, check carrier performance, validate against dashboard"
+        },
+        {
+          "request": "Review weekly performance for CA delivery vans",
+          "instructions": "Run weekly_metrics.py, compare week-over-week, flag any CPD spikes or volume shifts"
+        },
+        {
+          "request": "Validate dashboard metrics and generate report",
+          "instructions": "Verify weighted CPD calculations, check exclusion logic, ensure frontend matches backend"
+        }
+      ],
+      "skill_created": true,
+      "skill_name": "metrics-analysis"
+    }
+  ],
+  "skills_created": [
+    {
+      "name": "metrics-analysis",
+      "intent": "analysis",
+      "created": "2025-10-17T00:00:00",
+      "from_pattern": "analysis-weekly-metrics",
+      "description": "Weekly CA delivery van metrics analysis with CPD calculation, anomaly exclusion, and validation gates"
+    }
+  ],
+  "metadata": {
+    "last_updated": "2025-10-17T00:00:00",
+    "total_patterns_tracked": 1,
+    "total_skills_generated": 1,
+    "threshold": 2,
+    "notes": "This is a demonstration of the Self-Learning Skill System. Future patterns will be tracked automatically."
+  }
+}
