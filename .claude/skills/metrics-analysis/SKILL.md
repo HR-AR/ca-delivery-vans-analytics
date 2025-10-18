@@ -1,291 +1,248 @@
 ---
-name: metrics-analysis
-description: Complete workflow for analyzing CA delivery van weekly metrics. Validates data, calculates CPD with anomaly exclusion, identifies trends, and flags issues. Auto-invoked when user asks to "analyze metrics", "check weekly performance", or "validate dashboard data".
-version: 1.0.0
-created: 2025-10-17
-allowed-tools: [bash_tool, view, read, edit]
+name: Analyzing CA Delivery Van Metrics
+description: Complete weekly metrics analysis for California delivery vans including CPD calculation with anomaly exclusion, carrier performance tracking (FOX/NTG/FDC), week-over-week trends, and dashboard validation. Use when user mentions "analyze metrics", "check weekly performance", "validate dashboard", "review van performance", or "CPD analysis".
 ---
 
-# CA Metrics Analysis Skill
-
-**⚡ Complete workflow for weekly delivery van metrics analysis**
+# CA Delivery Van Metrics Analysis
 
 ## When to Use
 
-Auto-invoke this skill when user mentions:
-- "Analyze the metrics"
+- "Analyze this week's metrics"
 - "Check weekly performance"
 - "Validate dashboard data"
-- "Review this week's numbers"
-- "How are the vans performing?"
-- "Check for anomalies"
+- "Review van performance"
+- "How are the carriers doing?"
+- "Check CPD trends"
+- User asks about FOX/NTG/FDC performance
 
-## Context: Your Project
+## Quick Analysis
 
-**Project**: CA Delivery Vans Analytics Dashboard
-**Data Source**: Nash CSV exports (California stores only)
-**Key Metrics**: CPD (Cost Per Delivery), OTD (On-Time Delivery), Batch Density
-**Vendors**: FOX, NTG, FDC (3PL delivery vendors)
-**Stores**: 273 California Walmart stores
+For immediate results:
 
-## Analysis Methodology
-
-### Step 1: Data Validation
 ```bash
-# Check if latest Nash data is loaded
-python3 -c "
-from scripts.analysis.weekly_metrics import analyze_weekly_metrics
-import pandas as pd
-import json
-
-# Load Nash data
-nash_df = pd.read_csv('data/nash_data.csv')
-print(f'✅ Loaded {len(nash_df)} trips')
-print(f'📅 Date range: {nash_df[\"Date\"].min()} to {nash_df[\"Date\"].max()}')
-print(f'🏪 Stores: {nash_df[\"Store Id\"].nunique()} unique')
-print(f'🚚 Carriers: {nash_df[\"Carrier\"].unique()}')
-"
-```
-
-**Validation Checklist**:
-- [ ] Nash CSV loaded successfully
-- [ ] Date range covers full weeks (Monday-Sunday)
-- [ ] CA stores only (273 expected)
-- [ ] All 3 carriers present (FOX, NTG, FDC)
-- [ ] No missing critical columns
-
-### Step 2: Calculate Weekly Metrics
-```bash
-# Run weekly analysis with anomaly exclusion
+# Load and analyze data
 python3 << 'EOF'
 from scripts.analysis.weekly_metrics import analyze_weekly_metrics
 from scripts.analysis.cpd_analysis import load_rate_cards
 import pandas as pd
-import json
 
-# Load data
 nash_df = pd.read_csv('data/nash_data.csv')
 rate_cards = load_rate_cards('data/rate_cards.json')
 
-# Run analysis (min_batch_size=10 to exclude anomalies)
 results = analyze_weekly_metrics(nash_df, rate_cards, min_batch_size=10)
 
-print("\n📊 WEEKLY METRICS SUMMARY")
-print("=" * 60)
-print(f"Total Weeks Analyzed: {results['summary']['total_weeks']}")
-print(f"Date Range: {results['summary']['date_range']['start']} to {results['summary']['date_range']['end']}")
-
-# Latest week
-if results['weeks']:
-    latest = results['weeks'][-1]
-    print(f"\n🔍 LATEST WEEK: {latest['week_start']} to {latest['week_end']}")
-    print(f"   Total Trips: {latest['total_trips']}")
-    print(f"   Total Orders: {latest['total_orders']}")
-    print(f"   Average CPD: ${latest['weighted_avg_cpd']:.2f}")
-    print(f"   Excluded (anomalies): {latest['excluded_count']} trips")
-
-    # Carrier breakdown
-    print(f"\n🚚 CARRIER PERFORMANCE:")
-    for carrier, metrics in latest['carriers'].items():
-        print(f"   {carrier}: {metrics['trips']} trips, ${metrics['avg_cpd']:.2f} CPD")
+print(f"📊 Latest Week: {results['weeks'][-1]['week_start']}")
+print(f"   Orders: {results['weeks'][-1]['total_orders']}")
+print(f"   CPD: ${results['weeks'][-1]['weighted_avg_cpd']:.2f}")
+print(f"   Excluded: {results['weeks'][-1]['excluded_count']} trips")
 EOF
 ```
 
-**Metrics Calculated**:
-- Total orders/trips/batches per week
-- Weighted average CPD (excluding batches < 10 orders)
-- Carrier performance (FOX, NTG, FDC)
-- Store performance (top/bottom performers)
-- Anomaly exclusions (single-order trips skipped)
+## Complete Workflow
 
-### Step 3: Trend Analysis
-```python
-# Week-over-week comparison
-# This identifies:
-# - CPD increases/decreases
-# - Volume shifts between carriers
-# - Store performance changes
-# - Seasonal patterns
+### Step 1: Data Validation
 
-# Flag if:
-# - CPD change > 5% week-over-week
-# - Carrier volume shift > 20%
-# - Single store > 30% of total volume
+```bash
+python3 -c "
+import pandas as pd
+df = pd.read_csv('data/nash_data.csv')
+print(f'✅ Loaded {len(df)} trips')
+print(f'📅 {df[\"Date\"].min()} to {df[\"Date\"].max()}')
+print(f'🏪 {df[\"Store Id\"].nunique()} stores')
+print(f'🚚 Carriers: {list(df[\"Carrier\"].unique())}')
+"
 ```
 
-**Key Questions to Answer**:
-1. **Is CPD trending up or down?**
+**Validation Checklist:**
+- [ ] Nash CSV loaded
+- [ ] Full weeks (Monday-Sunday)
+- [ ] 273 CA stores
+- [ ] 3 carriers (FOX, NTG, FDC)
+
+### Step 2: Calculate Metrics
+
+Run weekly analysis with anomaly exclusion (batches < 10 orders):
+
+```python
+from scripts.analysis.weekly_metrics import analyze_weekly_metrics
+from scripts.analysis.cpd_analysis import load_rate_cards
+import pandas as pd
+
+nash_df = pd.read_csv('data/nash_data.csv')
+rate_cards = load_rate_cards('data/rate_cards.json')
+
+# min_batch_size=10 excludes anomalies
+results = analyze_weekly_metrics(nash_df, rate_cards, min_batch_size=10)
+```
+
+**Metrics Calculated:**
+- Total orders/trips/batches per week
+- Weighted average CPD (anomalies excluded)
+- Carrier performance breakdown
+- Store performance rankings
+- Exclusion statistics
+
+### Step 3: Analyze Trends
+
+**Key Questions:**
+
+1. **CPD Trending**
    - Compare last 2 weeks
-   - Check if within contractual rates ($380-$400)
+   - Check if within $380-$400 range
+   - Flag if change > 5%
 
-2. **Are there carrier performance issues?**
+2. **Carrier Performance**
    - FOX should be primary (highest volume)
-   - NTG/FDC as backup carriers
-   - Check if any carrier has unusual CPD spikes
+   - Check for unusual CPD spikes
+   - Validate carrier mix
 
-3. **Are anomalies being excluded properly?**
-   - Excluded count should be < 5% of total trips
-   - All excluded trips should have < 10 orders
+3. **Anomaly Exclusions**
+   - Should be < 5% of total trips
+   - All excluded trips < 10 orders
 
-4. **Do stores show unusual patterns?**
-   - Top 10 stores should be consistent week-over-week
-   - No single store > 30% of total volume
+4. **Store Patterns**
+   - Top 10 stores consistent week-over-week
+   - No single store > 30% volume
 
 ### Step 4: Dashboard Validation
-```bash
-# Verify dashboard calculations match Python backend
-# Check that weighted CPD aligns between:
-# 1. weekly_metrics.py (source of truth)
-# 2. dashboard.html (frontend display)
-# 3. analytics.service.ts (API layer)
 
-# Run integration test
+Verify dashboard matches Python calculations:
+
+```bash
 npm run test:integration
 ```
 
-**Dashboard Checks**:
-- [ ] Weekly chart shows correct CPD trend
+**Checks:**
+- [ ] Weekly chart CPD aligns
 - [ ] Carrier comparison uses same exclusion logic
 - [ ] OTD percentages match Nash data
-- [ ] Batch density chart excludes anomalies
-- [ ] CSV export includes all calculated fields
+- [ ] Batch density excludes anomalies
+- [ ] CSV export has all fields
 
-### Step 5: Report Findings
+### Step 5: Generate Report
 
-**Standard Report Format**:
+**Standard Format:**
+
 ```
-📊 CA DELIVERY VANS - WEEKLY METRICS REPORT
-Week: [Start Date] to [End Date]
+📊 CA DELIVERY VANS - WEEKLY METRICS
+Week: [Start] to [End]
 
 📈 KEY METRICS:
-- Total Orders: [X] (+/- Y% vs last week)
-- Average CPD: $[X.XX] (+/- $Y.YY vs last week)
-- Total Trips: [X]
-- Anomalies Excluded: [X] trips (Z%)
+- Orders: [X] (+/- Y% vs last week)
+- CPD: $[X.XX] (+/- $Y.YY vs last week)
+- Trips: [X]
+- Excluded: [X] trips (Z%)
 
 🚚 CARRIER PERFORMANCE:
 - FOX: [X] trips, $[X.XX] CPD (Primary)
 - NTG: [X] trips, $[X.XX] CPD
 - FDC: [X] trips, $[X.XX] CPD
 
-⚠️ ISSUES FLAGGED:
-- [List any concerns: CPD spikes, anomaly %, carrier imbalance]
+⚠️ ISSUES:
+[List concerns or "None"]
 
-✅ VALIDATION STATUS:
-- Data quality: [Pass/Fail]
-- Anomaly exclusion: [Pass/Fail]
-- Dashboard alignment: [Pass/Fail]
+✅ VALIDATION:
+- Data quality: Pass/Fail
+- Anomaly exclusion: Pass/Fail
+- Dashboard alignment: Pass/Fail
 ```
 
 ## Validation Gates
 
-Before marking analysis complete, ALL must pass:
+All must pass:
 
 ```bash
-# 1. Data integrity
+# Data integrity
 python3 -m pytest tests/unit/analysis_test.py
 
-# 2. Integration checks
+# Integration
 npm run test:integration
 
-# 3. Dashboard rendering
-# Open dashboard.html and verify:
-# - All charts render
-# - Metrics match Python output
-# - No console errors
+# Dashboard rendering
+# Open dashboard.html, verify charts render
 ```
 
-## Common Issues & Fixes
+## Common Issues
 
-### Issue 1: CPD Calculation Mismatch
-**Symptom**: Dashboard CPD ≠ Python script CPD
-**Root Cause**: Frontend not excluding anomalies (batches < 10 orders)
-**Fix**: Verify `analytics.service.ts` uses same `min_batch_size=10` logic
+### CPD Mismatch
+**Symptom:** Dashboard ≠ Python
+**Fix:** Check `analytics.service.ts` uses `min_batch_size=10`
 
-### Issue 2: Missing Weeks in Chart
-**Symptom**: Weekly chart has gaps
-**Root Cause**: Nash data upload incomplete or missing week_start calculation
-**Fix**: Check `get_week_start()` in `weekly_metrics.py` returns Monday correctly
+### Missing Weeks
+**Symptom:** Chart gaps
+**Fix:** Verify `get_week_start()` returns Monday
 
-### Issue 3: Anomaly Exclusion Too Aggressive
-**Symptom**: Excluded count > 10% of trips
-**Root Cause**: min_batch_size set too high
-**Fix**: Verify threshold is 10 (not 15 or 20)
+### High Exclusions
+**Symptom:** > 10% excluded
+**Fix:** Verify threshold is 10 (not higher)
 
-### Issue 4: Carrier Name Normalization
-**Symptom**: Same carrier appears twice (e.g., "FOX" and "Fox")
-**Root Cause**: Case-sensitive carrier names
-**Fix**: Use `normalize_carrier_name()` function consistently
+### Carrier Names
+**Symptom:** Duplicate carriers
+**Fix:** Use `normalize_carrier_name()`
 
-## Files to Check
+## Key Files
 
-When analyzing metrics, reference these files:
+**Python:**
+- `scripts/analysis/weekly_metrics.py` - Core logic
+- `scripts/analysis/cpd_analysis.py` - CPD calculation
+- `scripts/analysis/dashboard.py` - Chart data
 
-**Python Backend**:
-- `scripts/analysis/weekly_metrics.py` - Core calculation logic
-- `scripts/analysis/cpd_analysis.py` - CPD calculation with rate cards
-- `scripts/analysis/dashboard.py` - Data aggregation for charts
-
-**Frontend**:
-- `public/weekly-metrics.html` - Weekly chart page
-- `public/js/weekly-metrics.js` - Chart rendering logic
+**Frontend:**
+- `public/weekly-metrics.html` - Weekly chart
+- `public/js/weekly-metrics.js` - Rendering
 - `public/dashboard.html` - Main dashboard
 
-**Data**:
-- `data/nash_data.csv` - Trip data (source of truth)
-- `data/rate_cards.json` - Carrier rate cards
-- `States/walmart_stores_ca_only.csv` - CA store mapping
+**Data:**
+- `data/nash_data.csv` - Trip data
+- `data/rate_cards.json` - Carrier rates
+- `States/walmart_stores_ca_only.csv` - Store mapping
 
-**Tests**:
-- `tests/unit/analysis_test.py` - Python calculation tests
-- `tests/integration/dashboard-flow.test.ts` - End-to-end tests
+**Tests:**
+- `tests/unit/analysis_test.py` - Python tests
+- `tests/integration/dashboard-flow.test.ts` - E2E tests
 
-## Skill Improvement Log
+## Output Example
 
-### Version 1.0.0 (2025-10-17)
-- Initial creation based on project context
-- Captures standard weekly analysis workflow
-- Includes validation gates and common issues
-
-**Next Improvements**:
-- Add automated alerting thresholds (when CPD > $X, send notification)
-- Include seasonal adjustment factors (holiday weeks)
-- Auto-generate Slack report format from metrics
-- Add store-level deep-dive analysis
-
-## Usage Example
-
-**User**: "Analyze this week's metrics"
-
-**Claude** (using this skill):
 ```
-✅ Using metrics-analysis skill...
+✅ Analyzing CA Delivery Van Metrics
 
-📊 VALIDATING DATA
+📊 DATA VALIDATION
 ✅ Loaded 1,247 trips from nash_data.csv
 ✅ Date range: 2025-10-07 to 2025-10-13
 ✅ 273 CA stores detected
 ✅ All 3 carriers present
 
-📈 CALCULATING WEEKLY METRICS
-✅ Week: Oct 7 - Oct 13, 2025
-   - Total Orders: 12,458
-   - Average CPD: $387.45
-   - Excluded: 23 trips (1.8% - within normal range)
+📈 WEEKLY METRICS (Oct 7-13, 2025)
+- Total Orders: 12,458
+- Average CPD: $387.45
+- Total Trips: 1,247
+- Excluded: 23 trips (1.8%)
 
 🚚 CARRIER PERFORMANCE
-   - FOX: 856 trips, $385.20 CPD (Primary - Good)
-   - NTG: 298 trips, $392.10 CPD (Within range)
-   - FDC: 93 trips, $391.80 CPD (Backup carrier)
+- FOX: 856 trips, $385.20 CPD (68.6%)
+- NTG: 298 trips, $392.10 CPD (23.9%)
+- FDC: 93 trips, $391.80 CPD (7.5%)
 
-✅ VALIDATION PASSED
-   - Data quality: Pass
-   - Anomaly exclusion: Pass (1.8% excluded)
-   - Dashboard alignment: Pass
+📊 WEEK-OVER-WEEK
+- CPD: $387.45 vs $389.20 (-$1.75, -0.4%) ✅
+- Orders: 12,458 vs 11,923 (+535, +4.5%)
 
-📊 Full report available in dashboard
+⚠️ ISSUES: None
+
+✅ VALIDATION: All checks passed
+
+📊 Dashboard: http://localhost:3000/weekly-metrics
 ```
+
+## Progressive Disclosure
+
+For deep-dives, see:
+- `reference/cpd-calculation.md` - CPD formula details
+- `reference/anomaly-detection.md` - Exclusion logic
+- `reference/carrier-analysis.md` - Vendor performance metrics
 
 ---
 
-**Meta**: This skill was created as a practical example for the Self-Learning Skill System. It demonstrates how repetitive analysis workflows can be captured and automated.
+**Version:** 1.0.0
+**Created:** 2025-10-17
+**Type:** Official Agent Skill (Anthropic format)

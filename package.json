@@ -12,7 +12,12 @@
     "prp": "node scripts/context-engine.mjs prp",
     "scout": "node scripts/context-engine.mjs scout",
     "implement": "node scripts/context-engine.mjs implement",
-    "sync": "node scripts/context-engine.mjs sync"
+    "sync": "node scripts/context-engine.mjs sync",
+    "skill:create": "node scripts/skill-helper.mjs create",
+    "skill:list": "node scripts/skill-helper.mjs list",
+    "learn:track": "node scripts/skill-learner.mjs track",
+    "learn:record": "node scripts/skill-learner.mjs record",
+    "learn:list": "node scripts/skill-learner.mjs list"
   },
   "dependencies": {
     "cors": "^2.8.5",
